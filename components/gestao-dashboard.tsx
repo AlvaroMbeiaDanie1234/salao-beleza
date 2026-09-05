@@ -5,7 +5,7 @@ import Link from 'next/link'
 import dynamic from 'next/dynamic'
 import { motion, AnimatePresence } from 'framer-motion'
 import confetti from 'canvas-confetti'
-import { initialSalons } from '@/lib/salons-data'
+import { initialSalons, SalonData } from '@/lib/salons-data'
 import {
   Sparkles,
   Scissors,
@@ -47,17 +47,7 @@ import {
   Share2
 } from 'lucide-react'
 
-const SalonHeroGallery = dynamic(() => import('@/components/salon-hero-gallery'), {
-  ssr: false,
-  loading: () => (
-    <div className="flex h-[520px] w-full items-center justify-center rounded-[2.5rem] border border-rose-200 bg-white/80 backdrop-blur-md">
-      <div className="flex flex-col items-center gap-3 text-rose-400">
-        <div className="size-8 rounded-full border-2 border-rose-500 border-t-transparent animate-spin" />
-        <p className="font-serif text-sm italic text-rose-700">A carregar a galeria real de salões...</p>
-      </div>
-    </div>
-  ),
-})
+import SalonHeroGallery from '@/components/salon-hero-gallery'
 
 export default function GestaoDashboard() {
   const [salonsList, setSalonsList] = useState(initialSalons)
@@ -87,6 +77,40 @@ export default function GestaoDashboard() {
 
   function handleRegisterSalon(e: React.FormEvent) {
     e.preventDefault()
+    if (!salonName) return
+
+    const slug = salonName.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '')
+    const newSalon: SalonData = {
+      id: 'salon-' + Date.now(),
+      name: salonName,
+      tagline: 'Salão de Beleza & Estética Avançada',
+      slug,
+      city,
+      address: 'Endereço Registado no SGS',
+      phone: phone || '+244 923 000 000',
+      email: `${slug}@sgs.ao`,
+      description: `Proprietário: ${ownerName || 'Responsável'}. Salão registado na plataforma SGS.`,
+      status: 'pending', // Fica pendente para aprovação no /admin Master
+      owner_id: 'owner-' + Date.now(),
+      rating: 5.0,
+      reviewsCount: 1,
+      coverImage: 'https://images.unsplash.com/photo-1560066984-138dadb4c035?auto=format&fit=crop&w=1600&q=85',
+      avatarImage: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=300&q=80',
+      templateId: 'luxe-pink',
+      themeColor: '#1c1917',
+      textColor: '#fbf9f6',
+      fontFamily: 'serif',
+      footerText: `© 2026 ${salonName}. Todos os direitos reservados.`,
+      gallery: ['https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?auto=format&fit=crop&w=800&q=80'],
+      stylists: [],
+    }
+
+    // Gravar no localStorage global
+    const currentSalons = salonsList
+    const updated = [newSalon, ...currentSalons]
+    setSalonsList(updated)
+    localStorage.setItem('sgs_global_salons', JSON.stringify(updated))
+
     setRegisteredSuccess(true)
     if (typeof window !== 'undefined') {
       confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 } })

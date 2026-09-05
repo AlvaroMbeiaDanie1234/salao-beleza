@@ -8,21 +8,21 @@ import { ChevronLeft, ChevronRight, Sparkles, Star, ShieldCheck, Heart } from 'l
 const heroLocalImages = [
   {
     id: 1,
-    url: '/assets/hero/WhatsApp Image 2026-09-04 at 18.21.29.jpeg',
+    url: '/assets/hero/WhatsApp%20Image%202026-09-04%20at%2018.21.29.jpeg',
     title: 'Atelier de Penteados & Visagismo',
     subtitle: 'Transformação capilar de autor com acabamento impecável',
     tag: 'Haute Coiffure',
   },
   {
     id: 2,
-    url: '/assets/hero/WhatsApp Image 2026-09-04 at 18.21.30.jpeg',
-    title: 'Tranças Nagô & Rituais Afro',
+    url: '/assets/hero/WhatsApp%20Image%202026-09-04%20at%2018.21.30.jpeg',
+    title: 'Tranças Nagô & Cuidados Afro',
     subtitle: 'Estilo contemporâneo e saúde capilar avançada',
     tag: 'Arte & Cultura',
   },
   {
     id: 3,
-    url: '/assets/hero/WhatsApp Image 2026-09-04 at 18.21.32.jpeg',
+    url: '/assets/hero/WhatsApp%20Image%202026-09-04%20at%2018.21.32.jpeg',
     title: 'Estética Sensorial & Glow',
     subtitle: 'Experiência relaxante de beleza e bem-estar',
     tag: 'Estética Premium',
