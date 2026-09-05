@@ -1,0 +1,26 @@
+{
+  "name": "SGS — Sistema de Gestão de Serviços de Salões de Beleza",
+  "short_name": "SGS Salões",
+  "description": "A maior rede e plataforma de gestão de salões de beleza, barbearias e centros de estética em Angola.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#fff5f7",
+  "theme_color": "#e11d48",
+  "icons": [
+    {
+      "src": "/apple-icon.png",
+      "sizes": "180x180",
+      "type": "image/png"
+    },
+    {
+      "src": "/icon-light-32x32.png",
+      "sizes": "32x32",
+      "type": "image/png"
+    },
+    {
+      "src": "/icon-dark-32x32.png",
+      "sizes": "32x32",
+      "type": "image/png"
+    }
+  ]
+}
