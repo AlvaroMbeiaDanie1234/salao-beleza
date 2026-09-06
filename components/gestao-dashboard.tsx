@@ -449,9 +449,9 @@ export default function GestaoDashboard() {
           </div>
 
           <div className="mt-14">
-            {salonsList.filter((s) => s.status === 'approved').length > 0 ? (
+            {salonsList.length > 0 ? (
               <div className="grid gap-8 md:grid-cols-2">
-                {salonsList.filter((s) => s.status === 'approved').map((s) => (
+                {salonsList.map((s) => (
                   <div
                     key={s.id}
                     className="group relative overflow-hidden rounded-[2.5rem] border border-rose-100 bg-white transition-all duration-500 hover:border-rose-300 hover:shadow-2xl hover:shadow-rose-500/10 flex flex-col justify-between"
@@ -477,7 +477,18 @@ export default function GestaoDashboard() {
                         <div className="flex items-center gap-4">
                           <img src={s.avatarImage} alt={s.name} className="size-14 rounded-2xl object-cover border-2 border-rose-200 shadow-md" />
                           <div>
-                            <h3 className="font-serif text-2xl font-normal text-stone-900 group-hover:text-rose-700 transition-colors">{s.name}</h3>
+                            <div className="flex items-center gap-2">
+                              <h3 className="font-serif text-2xl font-normal text-stone-900 group-hover:text-rose-700 transition-colors">{s.name}</h3>
+                              {s.status === 'approved' ? (
+                                <span className="rounded-full bg-emerald-100 px-2.5 py-0.5 text-[10px] font-bold text-emerald-800 border border-emerald-300">
+                                  Aprovado
+                                </span>
+                              ) : (
+                                <span className="rounded-full bg-amber-100 px-2.5 py-0.5 text-[10px] font-bold text-amber-800 border border-amber-300">
+                                  Pendente
+                                </span>
+                              )}
+                            </div>
                             <p className="text-xs font-medium text-rose-600">{s.tagline}</p>
                           </div>
                         </div>
@@ -498,6 +509,12 @@ export default function GestaoDashboard() {
                           >
                             Visitar Salão <ArrowUpRight className="size-3.5" />
                           </Link>
+                          <Link
+                            href={`/${s.slug}/admin`}
+                            className="inline-flex items-center gap-1.5 rounded-full border border-rose-300 bg-rose-50 px-4 py-2.5 text-xs font-semibold text-rose-900 transition hover:bg-rose-100 shadow-sm"
+                          >
+                            Painel Admin
+                          </Link>
                         </div>
                       </div>
                     </div>
@@ -507,9 +524,9 @@ export default function GestaoDashboard() {
             ) : (
               <div className="rounded-3xl border border-dashed border-rose-200 p-12 text-center bg-white/60 backdrop-blur-sm">
                 <Building2 className="mx-auto size-12 text-rose-400" />
-                <h3 className="mt-4 font-serif text-2xl font-normal text-stone-900">Nenhum salão aprovado na base de dados no momento</h3>
+                <h3 className="mt-4 font-serif text-2xl font-normal text-stone-900">Nenhum salão registado no momento</h3>
                 <p className="mt-2 text-xs text-stone-500 max-w-md mx-auto">
-                  Quando um salão for cadastrado e aprovado pelo Admin Principal no painel <strong>/admin</strong>, ele aparecerá automaticamente listado aqui em tempo real.
+                  Assim que registar o seu salão, ele aparecerá aqui automaticamente listado em tempo real.
                 </p>
               </div>
             )}
