@@ -293,9 +293,20 @@ export default function SalonPublicView({
         </AnimatePresence>
       </nav>
 
-      {/* HERO BANNER DO SALÃO */}
-      <section className="relative h-[420px] sm:h-[480px] w-full overflow-hidden">
-        <img src={salon.coverImage} alt={salon.name} className="h-full w-full object-cover" />
+      {/* HERO BANNER DO SALÃO (SUPORTE PARA VÍDEO E FOTO PERSONALIZADA) */}
+      <section className="relative h-[420px] sm:h-[480px] w-full overflow-hidden bg-stone-950">
+        {salon.heroMediaType === 'video' && salon.heroVideoUrl ? (
+          <video
+            src={salon.heroVideoUrl}
+            autoPlay
+            loop
+            muted
+            playsInline
+            className="h-full w-full object-cover"
+          />
+        ) : (
+          <img src={salon.coverImage} alt={salon.name} className="h-full w-full object-cover" />
+        )}
         <div className="absolute inset-0 bg-gradient-to-t from-stone-950 via-stone-900/50 to-stone-950/20" />
 
         <div className="absolute inset-0 flex items-end">

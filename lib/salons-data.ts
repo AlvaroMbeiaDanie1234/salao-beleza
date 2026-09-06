@@ -55,6 +55,8 @@ export type SalonData = {
   reviewsCount: number
   coverImage: string
   avatarImage: string
+  heroMediaType?: 'image' | 'video'
+  heroVideoUrl?: string
   gallery: string[]
   mediaGallery?: MediaItemData[] // Galeria futurista com imagens e vídeos 3D / iPhone style
   stylists: { name: string; role: string; avatar: string }[]

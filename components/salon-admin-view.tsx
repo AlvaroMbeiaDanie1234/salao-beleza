@@ -1054,18 +1054,62 @@ export default function SalonAdminView({
 
               <div className="mt-6 flex flex-col gap-4">
                 {filteredBookings.length === 0 ? (
-                  <p className="py-8 text-center text-xs text-stone-400">Nenhuma marcação encontrada.</p>
+                  <p className="py-8 text-center text-xs text-stone-400">Nenhuma marcação encontrada na agenda.</p>
                 ) : (
                   filteredBookings.map((b) => (
-                    <div key={b.id} className="flex items-center justify-between rounded-2xl border border-rose-100 bg-[#fffafd] p-4">
-                      <div className="flex items-center gap-3.5">
-                        <img src={b.client_avatar} alt={b.client_name} className="size-11 rounded-full object-cover border border-rose-200" />
+                    <div key={b.id} className="flex flex-col sm:flex-row sm:items-center justify-between rounded-3xl border border-rose-200/80 bg-[#fffafd] p-5 shadow-sm gap-4 hover:border-rose-300 transition">
+                      <div className="flex items-center gap-4">
+                        <img src={b.client_avatar} alt={b.client_name} className="size-14 rounded-2xl object-cover border-2 border-rose-200 shadow-md" />
                         <div>
-                          <p className="font-semibold text-sm text-stone-900">{b.client_name}</p>
-                          <p className="text-xs text-stone-500">{b.service_name}</p>
+                          <div className="flex items-center gap-2">
+                            <h4 className="font-serif font-bold text-base text-stone-900">{b.client_name}</h4>
+                            <span className="rounded-full bg-rose-100 border border-rose-200 px-3 py-0.5 text-[10px] font-bold text-rose-800 uppercase tracking-wider">
+                              {b.service_name}
+                            </span>
+                          </div>
+
+                          <div className="mt-1 flex flex-wrap items-center gap-3 text-xs text-stone-500 font-medium">
+                            <span className="flex items-center gap-1 text-stone-700 font-bold">
+                              <Phone className="size-3.5 text-rose-600" /> {b.client_phone}
+                            </span>
+                            <span>•</span>
+                            <span className="flex items-center gap-1">
+                              <Calendar className="size-3.5 text-rose-500" /> {b.date}
+                            </span>
+                            <span>•</span>
+                            <span className="flex items-center gap-1">
+                              <Clock className="size-3.5 text-rose-500" /> {b.time}
+                            </span>
+                          </div>
                         </div>
                       </div>
-                      <span className="font-mono text-xs font-bold text-stone-900">{b.time}</span>
+
+                      <div className="flex items-center gap-3 border-t sm:border-t-0 pt-3 sm:pt-0 border-rose-100 justify-between sm:justify-end">
+                        <span className={`rounded-full px-3.5 py-1 text-xs font-bold flex items-center gap-1 ${
+                          b.status === 'Confirmado'
+                            ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
+                            : 'bg-amber-100 text-amber-800 border border-amber-300'
+                        }`}>
+                          {b.status === 'Confirmado' ? <CheckCircle2 className="size-3.5 text-emerald-600" /> : <Clock className="size-3.5 text-amber-600" />}
+                          {b.status}
+                        </span>
+
+                        {b.status !== 'Confirmado' && (
+                          <button
+                            onClick={async () => {
+                              try {
+                                await supabase.from('bookings').update({ status: 'Confirmado' }).eq('id', b.id)
+                                setBookings((prev) => prev.map((item) => (item.id === b.id ? { ...item, status: 'Confirmado' } : item)))
+                              } catch (err) {
+                                console.error('Erro ao confirmar marcação:', err)
+                              }
+                            }}
+                            className="rounded-full bg-gradient-to-r from-rose-600 to-pink-600 px-4 py-2 text-xs font-bold text-white shadow-sm hover:opacity-95"
+                          >
+                            Confirmar Atendimento
+                          </button>
+                        )}
+                      </div>
                     </div>
                   ))
                 )}
@@ -1107,6 +1151,43 @@ export default function SalonAdminView({
                     onChange={(e) => setSalon({ ...salon, tagline: e.target.value })}
                     className="mt-1 w-full rounded-2xl border border-rose-200 bg-[#fffafd] p-3.5 text-sm outline-none"
                   />
+                </div>
+              </div>
+
+              {/* SECCÃO DEDICADA PARA FOTO/VÍDEO DE CAPA HERO E LOGÓTIPO */}
+              <div className="rounded-2xl border border-rose-200 bg-[#fffafd] p-4 flex flex-col gap-3">
+                <span className="text-xs font-bold uppercase tracking-wider text-rose-600">Foto / Vídeo de Capa (Hero Banner)</span>
+                
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <div>
+                    <label className="text-[11px] font-semibold text-stone-500 uppercase">Foto de Capa (URL ou Upload)</label>
+                    <div className="flex gap-2 mt-1">
+                      <input
+                        value={salon.coverImage}
+                        onChange={(e) => setSalon({ ...salon, coverImage: e.target.value })}
+                        placeholder="https://exemplo.com/capa.jpg"
+                        className="flex-1 rounded-2xl border border-rose-200 bg-white p-3 text-xs outline-none"
+                      />
+                      <input type="file" accept="image/*" ref={coverFileRef} onChange={(e) => handleImageUpload(e, 'cover')} className="hidden" />
+                      <button
+                        type="button"
+                        onClick={() => coverFileRef.current?.click()}
+                        className="rounded-2xl bg-rose-100 px-3 text-xs font-bold text-rose-800 hover:bg-rose-200 whitespace-nowrap"
+                      >
+                        Upload
+                      </button>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="text-[11px] font-semibold text-stone-500 uppercase">Vídeo Promocional de Capa (URL)</label>
+                    <input
+                      value={salon.heroVideoUrl || ''}
+                      onChange={(e) => setSalon({ ...salon, heroVideoUrl: e.target.value, heroMediaType: e.target.value ? 'video' : 'image' })}
+                      placeholder="https://assets.mixkit.co/video.mp4 (Até 10MB)"
+                      className="mt-1 w-full rounded-2xl border border-rose-200 bg-white p-3 text-xs outline-none"
+                    />
+                  </div>
                 </div>
               </div>
 
