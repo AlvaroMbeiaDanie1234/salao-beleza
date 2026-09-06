@@ -74,6 +74,60 @@ export default function SalonAdminView({
   const [products, setProducts] = useState<ProductData[]>(initialProducts)
   const [bookings, setBookings] = useState<BookingData[]>(initialBookingsList)
 
+  // Separador Ativo da Sidebar
+  const [activeTab, setActiveTab] = useState<'about' | 'subscription' | 'customization' | 'products' | 'services' | 'bookings'>('about')
+  const [sidebarOpen, setSidebarOpen] = useState(false)
+
+  // Planos & Subscrição do Salão
+  const [availablePlans, setAvailablePlans] = useState<SubscriptionPlan[]>(initialPlans)
+  const [platformBank, setPlatformBank] = useState(initialPlatformBankDetails)
+  const [selectedPlanForSub, setSelectedPlanForSub] = useState<SubscriptionPlan | null>(null)
+  const [proofFileName, setProofFileName] = useState('')
+  const [proofSuccess, setProofSuccess] = useState(false)
+
+  // Modal para editar/adicionar informações "Sobre o Salão"
+  const [showEditInfoModal, setShowEditInfoModal] = useState(false)
+
+  // Termos de Pesquisa
+  const [productSearch, setProductSearch] = useState('')
+  const [serviceSearch, setServiceSearch] = useState('')
+  const [bookingSearch, setBookingSearch] = useState('')
+
+  // Modais de Registo
+  const [showProductModal, setShowProductModal] = useState(false)
+  const [showServiceModal, setShowServiceModal] = useState(false)
+
+  const coverFileRef = useRef<HTMLInputElement>(null)
+  const avatarFileRef = useRef<HTMLInputElement>(null)
+  const productFileRef = useRef<HTMLInputElement>(null)
+  const serviceFileRef = useRef<HTMLInputElement>(null)
+  const galleryFileRef = useRef<HTMLInputElement>(null)
+  const proofFileRef = useRef<HTMLInputElement>(null)
+
+  const [proofFilePreview, setProofFilePreview] = useState<string | null>(null)
+
+  const serviceVideoFileRef = useRef<HTMLInputElement>(null)
+
+  // Formulário de Novo Serviço com Foto e Vídeo (Até 10MB)
+  const [newServiceName, setNewServiceName] = useState('')
+  const [newServiceDesc, setNewServiceDesc] = useState('')
+  const [newServicePrice, setNewServicePrice] = useState('25000')
+  const [newServiceDuration, setNewServiceDuration] = useState('60')
+  const [newServiceCategory, setNewServiceCategory] = useState('Cabelo')
+  const [newServiceImage, setNewServiceImage] = useState('https://images.unsplash.com/photo-1562322140-8baeececf3df?auto=format&fit=crop&w=600&q=80')
+  const [newServiceVideoUrl, setNewServiceVideoUrl] = useState('')
+  const [newServiceMediaType, setNewServiceMediaType] = useState<'image' | 'video'>('image')
+  const [videoUploadError, setVideoUploadError] = useState('')
+
+  // Formulário de Novo Produto
+  const [newProductName, setNewProductName] = useState('')
+  const [newProductDesc, setNewProductDesc] = useState('')
+  const [newProductPrice, setNewProductPrice] = useState('18500')
+  const [newProductCategory, setNewProductCategory] = useState('Cabelo')
+  const [newProductImage, setNewProductImage] = useState('https://images.unsplash.com/photo-1608248597261-e4d0947c6b1e?auto=format&fit=crop&w=600&q=80')
+
+  const [savedFeedback, setSavedFeedback] = useState(false)
+
   const supabase = createClient()
 
   useEffect(() => {
