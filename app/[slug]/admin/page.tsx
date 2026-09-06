@@ -1,3 +1,6 @@
+export const dynamic = 'force-dynamic'
+export const revalidate = 0
+
 import { initialSalons, initialServices, initialBookings } from '@/lib/salons-data'
 import SalonAdminSlugClient from '@/components/salon-admin-slug-client'
 

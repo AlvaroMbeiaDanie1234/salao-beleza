@@ -158,7 +158,59 @@ export default function SalonAdminView({
         console.error('Erro ao ler marcações do Supabase:', err)
       }
 
-      // 2. Carregar dados atualizados do salão do Supabase apenas se o utilizador NÃO estiver a editar no modal
+      // 2. Carregar produtos do Supabase
+      try {
+        const { data: pData, error: pErr } = await supabase
+          .from('products')
+          .select('*')
+          .eq('salon_id', initialSalon.id)
+
+        if (!pErr && pData) {
+          const mappedProducts: ProductData[] = pData.map((p) => ({
+            id: p.id,
+            salon_id: p.salon_id,
+            name: p.name,
+            description: p.description || '',
+            price: Number(p.price),
+            image: p.image,
+            category: p.category || 'Geral',
+            inStock: p.in_stock ?? true,
+          }))
+          setProducts(mappedProducts)
+        }
+      } catch (err) {
+        console.error('Erro ao ler produtos do Supabase:', err)
+      }
+
+      // 3. Carregar serviços do Supabase
+      try {
+        const { data: sData, error: sErr } = await supabase
+          .from('services')
+          .select('*')
+          .eq('salon_id', initialSalon.id)
+
+        if (!sErr && sData) {
+          const mappedServices: ServiceData[] = sData.map((s) => ({
+            id: s.id,
+            salon_id: s.salon_id,
+            name: s.name,
+            description: s.description || '',
+            duration_minutes: Number(s.duration_minutes || 60),
+            price: Number(s.price),
+            image: s.image,
+            videoUrl: s.video_url,
+            mediaType: s.media_type,
+            active: s.active ?? true,
+            category: s.category || 'Geral',
+            popular: s.popular ?? false,
+          }))
+          setServices(mappedServices)
+        }
+      } catch (err) {
+        console.error('Erro ao ler serviços do Supabase:', err)
+      }
+
+      // 4. Carregar dados atualizados do salão do Supabase apenas se o utilizador NÃO estiver a editar no modal
       if (!showEditInfoModal) {
         try {
           const { data: sData, error: sErr } = await supabase
@@ -206,7 +258,7 @@ export default function SalonAdminView({
     }
   }
 
-  function handleSubmitPaymentProof(e: React.FormEvent) {
+  async function handleSubmitPaymentProof(e: React.FormEvent) {
     e.preventDefault()
     if (!selectedPlanForSub) return
 
@@ -230,19 +282,14 @@ export default function SalonAdminView({
     }
 
     setSalon(updatedSalon)
-    localStorage.setItem(`salon_custom_${salon.slug}`, JSON.stringify(updatedSalon))
-
-    // Atualizar no localStorage global de salões
-    const savedSalonsStr = localStorage.getItem('sgs_global_salons')
-    if (savedSalonsStr) {
-      try {
-        const allSalons: SalonData[] = JSON.parse(savedSalonsStr)
-        const updatedAll = allSalons.map((s) => (s.id === salon.id ? updatedSalon : s))
-        localStorage.setItem('sgs_global_salons', JSON.stringify(updatedAll))
-        window.dispatchEvent(new Event('storage'))
-      } catch (e) {
-        console.error(e)
-      }
+    try {
+      await supabase.from('salons').update({
+        plan_id: selectedPlanForSub.id,
+        plan_name: selectedPlanForSub.name,
+        plan_status: 'em_analise',
+      }).eq('id', salon.id)
+    } catch (err) {
+      console.error(err)
     }
 
     setProofSuccess(true)
@@ -373,7 +420,7 @@ export default function SalonAdminView({
     }
   }
 
-  function addService(e: React.FormEvent) {
+  async function addService(e: React.FormEvent) {
     e.preventDefault()
     if (!newServiceName) return
     const newS: ServiceData = {
@@ -391,7 +438,25 @@ export default function SalonAdminView({
     }
     const updated = [newS, ...services]
     setServices(updated)
-    localStorage.setItem(`salon_services_${salon.slug}`, JSON.stringify(updated))
+
+    try {
+      await supabase.from('services').insert([{
+        id: newS.id,
+        salon_id: newS.salon_id,
+        name: newS.name,
+        description: newS.description,
+        duration_minutes: newS.duration_minutes,
+        price: newS.price,
+        image: newS.image,
+        video_url: newS.videoUrl,
+        media_type: newS.mediaType,
+        active: newS.active,
+        category: newS.category,
+      }])
+    } catch (err) {
+      console.error('Erro ao adicionar serviço no Supabase:', err)
+    }
+
     setNewServiceName('')
     setNewServiceDesc('')
     setNewServiceVideoUrl('')
@@ -399,13 +464,17 @@ export default function SalonAdminView({
     setShowServiceModal(false)
   }
 
-  function removeService(id: string) {
+  async function removeService(id: string) {
     const updated = services.filter((s) => s.id !== id)
     setServices(updated)
-    localStorage.setItem(`salon_services_${salon.slug}`, JSON.stringify(updated))
+    try {
+      await supabase.from('services').delete().eq('id', id)
+    } catch (err) {
+      console.error('Erro ao remover serviço no Supabase:', err)
+    }
   }
 
-  function addProduct(e: React.FormEvent) {
+  async function addProduct(e: React.FormEvent) {
     e.preventDefault()
     if (!newProductName) return
     const newP: ProductData = {
@@ -420,16 +489,35 @@ export default function SalonAdminView({
     }
     const updated = [newP, ...products]
     setProducts(updated)
-    localStorage.setItem(`salon_products_${salon.slug}`, JSON.stringify(updated))
+
+    try {
+      await supabase.from('products').insert([{
+        id: newP.id,
+        salon_id: newP.salon_id,
+        name: newP.name,
+        description: newP.description,
+        price: newP.price,
+        image: newP.image,
+        category: newP.category,
+        in_stock: newP.inStock,
+      }])
+    } catch (err) {
+      console.error('Erro ao adicionar produto no Supabase:', err)
+    }
+
     setNewProductName('')
     setNewProductDesc('')
     setShowProductModal(false)
   }
 
-  function removeProduct(id: string) {
+  async function removeProduct(id: string) {
     const updated = products.filter((p) => p.id !== id)
     setProducts(updated)
-    localStorage.setItem(`salon_products_${salon.slug}`, JSON.stringify(updated))
+    try {
+      await supabase.from('products').delete().eq('id', id)
+    } catch (err) {
+      console.error('Erro ao remover produto no Supabase:', err)
+    }
   }
 
   const filteredProducts = products.filter(p => p.name.toLowerCase().includes(productSearch.toLowerCase()) || p.category.toLowerCase().includes(productSearch.toLowerCase()))

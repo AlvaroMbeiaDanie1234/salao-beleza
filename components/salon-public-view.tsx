@@ -76,40 +76,64 @@ export default function SalonPublicView({
   const [currentImgIndex, setCurrentImgIndex] = useState(0)
 
   useEffect(() => {
-    const saved = localStorage.getItem(`salon_custom_${initialSalon.slug}`)
-    if (saved) {
+    async function loadPublicDataFromSupabase() {
       try {
-        const parsed = JSON.parse(saved)
-        setSalon(parsed)
+        // Carregar produtos do salão do Supabase
+        const { data: pData, error: pErr } = await supabase
+          .from('products')
+          .select('*')
+          .eq('salon_id', initialSalon.id)
+
+        if (!pErr && pData) {
+          const mappedProducts: ProductData[] = pData.map((p) => ({
+            id: p.id,
+            salon_id: p.salon_id,
+            name: p.name,
+            description: p.description || '',
+            price: Number(p.price),
+            image: p.image,
+            category: p.category || 'Geral',
+            inStock: p.in_stock ?? true,
+          }))
+          setProducts(mappedProducts)
+        }
+
+        // Carregar serviços do salão do Supabase em tempo real
+        const { data: sData, error: sErr } = await supabase
+          .from('services')
+          .select('*')
+          .eq('salon_id', initialSalon.id)
+
+        if (!sErr && sData) {
+          const mappedServices: ServiceData[] = sData.map((s) => ({
+            id: s.id,
+            salon_id: s.salon_id,
+            name: s.name,
+            description: s.description || '',
+            duration_minutes: Number(s.duration_minutes || 60),
+            price: Number(s.price),
+            image: s.image,
+            videoUrl: s.video_url,
+            mediaType: s.media_type,
+            active: s.active ?? true,
+            category: s.category || 'Geral',
+            popular: s.popular ?? false,
+          }))
+          setServices(mappedServices)
+        }
       } catch (err) {
-        console.error('Erro ao carregar dados do salão:', err)
+        console.error('Erro ao ler produtos/serviços do Supabase:', err)
       }
     }
 
-    const savedServices = localStorage.getItem(`salon_services_${initialSalon.slug}`)
-    if (savedServices) {
-      try {
-        setServices(JSON.parse(savedServices))
-      } catch (err) {
-        console.error('Erro ao carregar serviços:', err)
-      }
-    }
-
-    const savedProducts = localStorage.getItem(`salon_products_${initialSalon.slug}`)
-    if (savedProducts) {
-      try {
-        setProducts(JSON.parse(savedProducts))
-      } catch (err) {
-        console.error('Erro produtos:', err)
-      }
-    }
+    loadPublicDataFromSupabase()
 
     const interval = setInterval(() => {
       setCurrentImgIndex((prev) => (prev + 1) % carouselImages.length)
     }, 5000)
 
     return () => clearInterval(interval)
-  }, [initialSalon.slug])
+  }, [initialSalon.id, initialSalon.slug])
 
   async function sendSmsNotification(phoneNumber: string, messageBody: string) {
     try {

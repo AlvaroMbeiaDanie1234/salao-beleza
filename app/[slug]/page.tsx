@@ -1,3 +1,6 @@
+export const dynamic = 'force-dynamic'
+export const revalidate = 0
+
 import { initialSalons, initialServices, SalonData } from '@/lib/salons-data'
 import SalonPublicView from '@/components/salon-public-view'
 import SalonSlugClient from '@/components/salon-slug-client'
