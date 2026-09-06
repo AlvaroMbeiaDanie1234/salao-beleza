@@ -78,7 +78,32 @@ export default function SalonPublicView({
   useEffect(() => {
     async function loadPublicDataFromSupabase() {
       try {
-        // Carregar produtos do salão do Supabase
+        // Carregar dados atualizados do salão em tempo real
+        const { data: salData, error: salErr } = await supabase
+          .from('salons')
+          .select('*')
+          .eq('id', initialSalon.id)
+          .single()
+
+        if (!salErr && salData) {
+          setSalon((prev) => ({
+            ...prev,
+            name: salData.name || prev.name,
+            tagline: salData.tagline || prev.tagline,
+            city: salData.city || prev.city,
+            address: salData.address || prev.address,
+            phone: salData.phone || prev.phone,
+            email: salData.email || prev.email,
+            description: salData.description || prev.description,
+            coverImage: salData.cover_image || prev.coverImage,
+            avatarImage: salData.avatar_image || prev.avatarImage,
+            heroVideoUrl: salData.hero_video_url,
+            heroMediaType: salData.hero_media_type,
+            gallery: salData.gallery || prev.gallery,
+          }))
+        }
+
+        // Carregar produtos do salão do Supabase em tempo real
         const { data: pData, error: pErr } = await supabase
           .from('products')
           .select('*')
@@ -127,12 +152,16 @@ export default function SalonPublicView({
     }
 
     loadPublicDataFromSupabase()
+    const dataSyncInterval = setInterval(loadPublicDataFromSupabase, 2000)
 
     const interval = setInterval(() => {
       setCurrentImgIndex((prev) => (prev + 1) % carouselImages.length)
     }, 5000)
 
-    return () => clearInterval(interval)
+    return () => {
+      clearInterval(dataSyncInterval)
+      clearInterval(interval)
+    }
   }, [initialSalon.id, initialSalon.slug])
 
   async function sendSmsNotification(phoneNumber: string, messageBody: string) {
