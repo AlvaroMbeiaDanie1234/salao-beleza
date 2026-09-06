@@ -111,6 +111,18 @@ export default function SalonPublicView({
     return () => clearInterval(interval)
   }, [initialSalon.slug])
 
+  async function sendSmsNotification(phoneNumber: string, messageBody: string) {
+    try {
+      await fetch('/api/send-sms', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phoneNumber, messageBody }),
+      })
+    } catch (err) {
+      console.error('Erro ao disparar SMS:', err)
+    }
+  }
+
   async function handleBooking(e: React.FormEvent) {
     e.preventDefault()
     if (!selectedService) return
@@ -143,12 +155,38 @@ export default function SalonPublicView({
       console.error('Erro ao registar agendamento no Supabase:', err)
     }
 
+    // 1. Enviar SMS de notificação para o proprietário do salão
+    if (salon.phone) {
+      const msgDono = `[SGS] Nova marcacao no salao ${salon.name}! Cliente: ${clientName} (${clientPhone}). Servico: ${selectedService.name} em ${newBooking.date} as ${newBooking.time}.`
+      sendSmsNotification(salon.phone, msgDono)
+    }
+
+    // 2. Enviar SMS de notificação para o cliente
+    if (clientPhone) {
+      const msgCliente = `[${salon.name}] Ola ${clientName}, o seu agendamento para ${selectedService.name} em ${newBooking.date} as ${newBooking.time} foi recebido e aguarda confirmacao.`
+      sendSmsNotification(clientPhone, msgCliente)
+    }
+
     setConfirmed(true)
     confetti({ particleCount: 90, spread: 60, origin: { y: 0.6 } })
   }
 
-  function handleOrderProduct(e: React.FormEvent) {
+  async function handleOrderProduct(e: React.FormEvent) {
     e.preventDefault()
+    if (!selectedProduct) return
+
+    // 1. Enviar SMS para o salão sobre a encomenda do produto
+    if (salon.phone) {
+      const msgDono = `[SGS] Nova encomenda de produto no salao ${salon.name}! Cliente: ${clientName} (${clientPhone}). Produto: ${selectedProduct.name} (${formatKz(selectedProduct.price)}).`
+      sendSmsNotification(salon.phone, msgDono)
+    }
+
+    // 2. Enviar SMS para o cliente sobre a encomenda
+    if (clientPhone) {
+      const msgCliente = `[${salon.name}] Ola ${clientName}, a sua encomenda de ${selectedProduct.name} foi recebida. Entraremos em contacto para a entrega.`
+      sendSmsNotification(clientPhone, msgCliente)
+    }
+
     setProductOrderConfirmed(true)
     confetti({ particleCount: 90, spread: 60, origin: { y: 0.6 } })
   }

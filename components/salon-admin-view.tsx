@@ -1088,26 +1088,70 @@ export default function SalonAdminView({
                         <span className={`rounded-full px-3.5 py-1 text-xs font-bold flex items-center gap-1 ${
                           b.status === 'Confirmado'
                             ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
+                            : b.status === 'Rejeitado'
+                            ? 'bg-red-100 text-red-800 border border-red-300'
                             : 'bg-amber-100 text-amber-800 border border-amber-300'
                         }`}>
-                          {b.status === 'Confirmado' ? <CheckCircle2 className="size-3.5 text-emerald-600" /> : <Clock className="size-3.5 text-amber-600" />}
+                          {b.status === 'Confirmado' ? (
+                            <CheckCircle2 className="size-3.5 text-emerald-600" />
+                          ) : b.status === 'Rejeitado' ? (
+                            <X className="size-3.5 text-red-600" />
+                          ) : (
+                            <Clock className="size-3.5 text-amber-600" />
+                          )}
                           {b.status}
                         </span>
 
-                        {b.status !== 'Confirmado' && (
-                          <button
-                            onClick={async () => {
-                              try {
-                                await supabase.from('bookings').update({ status: 'Confirmado' }).eq('id', b.id)
-                                setBookings((prev) => prev.map((item) => (item.id === b.id ? { ...item, status: 'Confirmado' } : item)))
-                              } catch (err) {
-                                console.error('Erro ao confirmar marcação:', err)
-                              }
-                            }}
-                            className="rounded-full bg-gradient-to-r from-rose-600 to-pink-600 px-4 py-2 text-xs font-bold text-white shadow-sm hover:opacity-95"
-                          >
-                            Confirmar Atendimento
-                          </button>
+                        {b.status === 'Pendente' && (
+                          <div className="flex items-center gap-2">
+                            <button
+                              onClick={async () => {
+                                try {
+                                  await supabase.from('bookings').update({ status: 'Confirmado' }).eq('id', b.id)
+                                  setBookings((prev) => prev.map((item) => (item.id === b.id ? { ...item, status: 'Confirmado' } : item)))
+                                  if (b.client_phone) {
+                                    fetch('/api/send-sms', {
+                                      method: 'POST',
+                                      headers: { 'Content-Type': 'application/json' },
+                                      body: JSON.stringify({
+                                        phoneNumber: b.client_phone,
+                                        messageBody: `[${salon.name}] Olá ${b.client_name}, a sua marcação para ${b.service_name} em ${b.date} às ${b.time} foi CONFIRMADA.`,
+                                      }),
+                                    }).catch((err) => console.error('Erro SMS:', err))
+                                  }
+                                } catch (err) {
+                                  console.error('Erro ao confirmar marcação:', err)
+                                }
+                              }}
+                              className="rounded-full bg-emerald-600 px-3.5 py-1.5 text-xs font-bold text-white shadow-sm hover:bg-emerald-700 transition"
+                            >
+                              Aceitar
+                            </button>
+
+                            <button
+                              onClick={async () => {
+                                try {
+                                  await supabase.from('bookings').update({ status: 'Rejeitado' }).eq('id', b.id)
+                                  setBookings((prev) => prev.map((item) => (item.id === b.id ? { ...item, status: 'Rejeitado' } : item)))
+                                  if (b.client_phone) {
+                                    fetch('/api/send-sms', {
+                                      method: 'POST',
+                                      headers: { 'Content-Type': 'application/json' },
+                                      body: JSON.stringify({
+                                        phoneNumber: b.client_phone,
+                                        messageBody: `[${salon.name}] Olá ${b.client_name}, lamentamos mas a sua marcação para ${b.service_name} em ${b.date} às ${b.time} foi REJEITADA.`,
+                                      }),
+                                    }).catch((err) => console.error('Erro SMS:', err))
+                                  }
+                                } catch (err) {
+                                  console.error('Erro ao rejeitar marcação:', err)
+                                }
+                              }}
+                              className="rounded-full bg-red-600 px-3.5 py-1.5 text-xs font-bold text-white shadow-sm hover:bg-red-700 transition"
+                            >
+                              Rejeitar
+                            </button>
+                          </div>
                         )}
                       </div>
                     </div>
