@@ -1,17 +1,18 @@
-import { notFound } from 'next/navigation'
 import { initialSalons, initialServices, initialBookings } from '@/lib/salons-data'
-import SalonAdminView from '@/components/salon-admin-view'
+import SalonAdminSlugClient from '@/components/salon-admin-slug-client'
 
 export default async function SalonAdminPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params
-  const salon = initialSalons.find((s) => s.slug === slug)
+  const initialSalon = initialSalons.find((s) => s.slug === slug)
+  const services = initialServices.filter((s) => s.salon_id === (initialSalon?.id || ''))
+  const bookings = initialBookings.filter((b) => b.salon_id === (initialSalon?.id || ''))
 
-  if (!salon) {
-    notFound()
-  }
-
-  const services = initialServices.filter((s) => s.salon_id === salon.id)
-  const bookings = initialBookings.filter((b) => b.salon_id === salon.id)
-
-  return <SalonAdminView salon={salon} services={services} bookings={bookings} />
+  return (
+    <SalonAdminSlugClient
+      slug={slug}
+      initialSalon={initialSalon}
+      initialServices={services}
+      initialBookings={bookings}
+    />
+  )
 }

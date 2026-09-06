@@ -33,9 +33,12 @@ import {
   Heart,
   ImageIcon,
   Video,
-  Menu
+  Menu,
+  ShieldCheck,
+  ArrowRight
 } from 'lucide-react'
 import FuturisticMediaGallery from '@/components/futuristic-media-gallery'
+import { createClient } from '@/lib/supabase/client'
 
 const carouselImages = [
   'https://images.unsplash.com/photo-1560066984-138dadb4c035?auto=format&fit=crop&w=1600&q=85',
@@ -56,6 +59,7 @@ export default function SalonPublicView({
 }) {
   const [salon, setSalon] = useState<SalonData>(initialSalon)
   const [services, setServices] = useState<ServiceData[]>(initialServicesList)
+  const supabase = createClient()
   const [products, setProducts] = useState<ProductData[]>(initialProducts)
 
   const [selectedService, setSelectedService] = useState<ServiceData | null>(null)
@@ -105,8 +109,38 @@ export default function SalonPublicView({
     return () => clearInterval(interval)
   }, [initialSalon.slug])
 
-  function handleBooking(e: React.FormEvent) {
+  async function handleBooking(e: React.FormEvent) {
     e.preventDefault()
+    if (!selectedService) return
+
+    const newBooking: BookingData = {
+      id: 'booking-' + Date.now(),
+      salon_id: salon.id,
+      service_name: selectedService.name,
+      date: bookingDate || new Date().toISOString().split('T')[0],
+      time: bookingTime || '10:00',
+      client_name: clientName,
+      client_phone: clientPhone,
+      client_avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=150&q=80',
+      status: 'Pendente',
+    }
+
+    try {
+      await supabase.from('bookings').insert([{
+        id: newBooking.id,
+        salon_id: newBooking.salon_id,
+        service_name: newBooking.service_name,
+        date: newBooking.date,
+        time: newBooking.time,
+        client_name: newBooking.client_name,
+        client_phone: newBooking.client_phone,
+        client_avatar: newBooking.client_avatar,
+        status: newBooking.status,
+      }])
+    } catch (err) {
+      console.error('Erro ao registar agendamento no Supabase:', err)
+    }
+
     setConfirmed(true)
     confetti({ particleCount: 90, spread: 60, origin: { y: 0.6 } })
   }
@@ -324,66 +358,160 @@ export default function SalonPublicView({
         {/* ABA DE SERVIÇOS */}
         {activeTab === 'servicos' && (
           <div>
-            <div className="flex flex-col justify-between gap-3 md:flex-row md:items-end">
+            <div className="flex flex-col justify-between gap-3 md:flex-row md:items-end border-b border-stone-200/40 pb-6">
               <div>
-                <p className="text-xs font-bold tracking-widest text-rose-500 uppercase">Haute Coiffure & Estética</p>
-                <h2 className="mt-1 font-serif text-3xl sm:text-4xl font-normal">Menu de Serviços de Beleza</h2>
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-rose-50 border border-rose-200/60 px-3.5 py-1 text-[11px] font-bold text-rose-600 tracking-widest uppercase">
+                  <Sparkles className="size-3 text-rose-500 animate-pulse" /> Haute Coiffure & Estética Avançada
+                </span>
+                <h2 className="mt-2 font-serif text-3xl sm:text-4xl font-light tracking-tight text-stone-900">
+                  Menu de Serviços Exclusivos
+                </h2>
               </div>
-              <span className="text-xs text-stone-500 font-medium">Preços em Kwanzas (Kz) com diagnóstico incluído.</span>
+              <div className="flex items-center gap-2 text-xs font-semibold text-stone-600 bg-stone-100/70 rounded-full px-4 py-2 backdrop-blur-sm border border-stone-200/50">
+                <ShieldCheck className="size-4 text-emerald-600" />
+                <span>Preços transparentes em Kwanzas (Kz) · Diagnóstico Incluído</span>
+              </div>
             </div>
 
-            <div className="mt-8 grid gap-6 md:grid-cols-2">
-              {services.map((srv) => (
-                <motion.div
-                  key={srv.id}
-                  whileHover={{ y: -4 }}
-                  className={`group overflow-hidden rounded-3xl border border-stone-200 ${cardBg} shadow-sm transition hover:shadow-lg flex flex-col justify-between`}
-                >
-                  {srv.image && (
-                    <div className="relative h-48 w-full overflow-hidden">
-                      <img src={srv.image} alt={srv.name} className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" />
-                      <div className="absolute inset-0 bg-gradient-to-t from-stone-950/60 via-transparent to-transparent" />
-                      {srv.popular && (
-                        <span className="absolute top-4 right-4 rounded-full bg-rose-600 px-3.5 py-1 text-[10px] font-bold text-white uppercase tracking-wider shadow-md">
-                          Serviço Popular
+            {services.length === 0 ? (
+              <div className="mt-12 rounded-3xl border border-dashed border-stone-300 p-12 text-center bg-stone-50/50">
+                <Scissors className="mx-auto size-10 text-stone-400" />
+                <p className="mt-3 text-sm font-semibold text-stone-700">Nenhum serviço cadastrado para este salão no momento.</p>
+              </div>
+            ) : (
+              <div className="mt-8 grid gap-8 md:grid-cols-2 lg:grid-cols-2">
+                {services.map((srv) => (
+                  <motion.div
+                    key={srv.id}
+                    whileHover={{ y: -6 }}
+                    transition={{ duration: 0.25, ease: 'easeOut' }}
+                    className={`group relative overflow-hidden rounded-[2.5rem] border border-stone-200/90 ${cardBg} shadow-sm transition-all duration-300 hover:shadow-2xl hover:border-rose-400/80 flex flex-col justify-between`}
+                  >
+                    {/* MEDIA HEADER COM VISUALIZAÇÃO COMPLETA SEM CORTES (CONTAIN & FULL ASPECT) */}
+                    {srv.mediaType === 'video' && srv.videoUrl ? (
+                      <div className="relative w-full overflow-hidden bg-stone-950 flex items-center justify-center p-2 group/media min-h-[260px] max-h-[420px]">
+                        <video
+                          src={srv.videoUrl}
+                          autoPlay
+                          loop
+                          muted
+                          playsInline
+                          className="w-full h-auto max-h-[400px] object-contain rounded-2xl transition-transform duration-500 group-hover/media:scale-[1.02]"
+                        />
+                        <div className="absolute inset-0 bg-gradient-to-t from-stone-950/80 via-transparent to-black/20 pointer-events-none rounded-2xl" />
+                        
+                        <span className="absolute top-4 left-4 rounded-full bg-rose-600/90 backdrop-blur-md px-3.5 py-1.5 text-[10px] font-bold text-white uppercase tracking-wider shadow-lg flex items-center gap-1.5 border border-white/20 z-10">
+                          <Video className="size-3.5 animate-pulse" /> Vídeo HD Completo
                         </span>
-                      )}
-                    </div>
-                  )}
 
-                  <div className="p-6 sm:p-8">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <h3 className="font-serif text-xl font-normal">{srv.name}</h3>
-                        {!srv.image && srv.popular && (
-                          <span className="rounded-full bg-rose-100 px-3 py-1 text-[10px] font-bold text-rose-800 uppercase tracking-wider">
-                            Popular
+                        {srv.popular && (
+                          <span className="absolute top-4 right-4 rounded-full bg-amber-500/90 backdrop-blur-md px-3.5 py-1.5 text-[10px] font-bold text-white uppercase tracking-wider shadow-lg border border-amber-300/30 flex items-center gap-1 z-10">
+                            <Sparkles className="size-3" /> Serviço Popular
                           </span>
                         )}
-                      </div>
-                      <span className="font-serif text-2xl font-bold">{formatKz(srv.price)}</span>
-                    </div>
-                    <p className="mt-3 text-xs leading-relaxed opacity-80">{srv.description}</p>
-                    <p className="mt-4 text-[11px] font-semibold opacity-60 flex items-center gap-1.5">
-                      <Clock className="size-3.5" /> Duração: {srv.duration_minutes} minutos
-                    </p>
-                  </div>
 
-                  <div className="px-6 sm:px-8 pb-6 sm:pb-8 pt-0 flex items-center justify-between">
-                    <span className="text-xs font-medium text-emerald-600 flex items-center gap-1">
-                      <CheckCircle className="size-3.5" /> Disponibilidade imediata
-                    </span>
-                    <button
-                      onClick={() => setSelectedService(srv)}
-                      style={{ backgroundColor: accentColor }}
-                      className="rounded-full px-5 py-2.5 text-xs font-semibold text-white transition opacity-90 hover:opacity-100 shadow-md"
-                    >
-                      Agendar
-                    </button>
-                  </div>
-                </motion.div>
-              ))}
-            </div>
+                        <div className="absolute bottom-4 left-6 right-6 flex items-end justify-between text-white z-10">
+                          <span className="rounded-full bg-stone-900/80 backdrop-blur-md border border-white/20 px-3.5 py-1 text-xs font-semibold flex items-center gap-1.5 text-stone-200">
+                            <Clock className="size-3.5 text-rose-400" /> {srv.duration_minutes} minutos
+                          </span>
+                          <div className="text-right">
+                            <span className="text-[10px] font-bold uppercase tracking-wider text-rose-300 block">Preço do Serviço</span>
+                            <span className="font-serif text-2xl font-bold tracking-tight text-white drop-shadow-md">
+                              {formatKz(srv.price)}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    ) : srv.image ? (
+                      <div className="relative w-full overflow-hidden bg-stone-900 flex items-center justify-center p-2 group/media min-h-[240px] max-h-[380px]">
+                        <img
+                          src={srv.image}
+                          alt={srv.name}
+                          className="w-full h-auto max-h-[360px] object-contain rounded-2xl transition-transform duration-500 group-hover/media:scale-[1.02]"
+                        />
+                        <div className="absolute inset-0 bg-gradient-to-t from-stone-950/80 via-transparent to-black/20 pointer-events-none rounded-2xl" />
+                        
+                        {srv.popular && (
+                          <span className="absolute top-4 right-4 rounded-full bg-rose-600/90 backdrop-blur-md px-3.5 py-1.5 text-[10px] font-bold text-white uppercase tracking-wider shadow-lg border border-white/20 flex items-center gap-1 z-10">
+                            <Sparkles className="size-3" /> Serviço em Destaque
+                          </span>
+                        )}
+
+                        <div className="absolute bottom-4 left-6 right-6 flex items-end justify-between text-white z-10">
+                          <span className="rounded-full bg-stone-900/80 backdrop-blur-md border border-white/20 px-3.5 py-1 text-xs font-semibold flex items-center gap-1.5 text-stone-200">
+                            <Clock className="size-3.5 text-rose-400" /> {srv.duration_minutes} minutos
+                          </span>
+                          <div className="text-right">
+                            <span className="text-[10px] font-bold uppercase tracking-wider text-rose-300 block">Preço do Serviço</span>
+                            <span className="font-serif text-2xl font-bold tracking-tight text-white drop-shadow-md">
+                              {formatKz(srv.price)}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    ) : null}
+
+                    {/* DETALHES DO SERVIÇO & BOTÃO DE AGENDAMENTO */}
+                    <div className="p-7 sm:p-8 flex-1 flex flex-col justify-between">
+                      <div>
+                        {!srv.image && !srv.videoUrl && (
+                          <div className="flex items-center justify-between mb-4 border-b border-stone-100 pb-4">
+                            <div>
+                              {srv.popular && (
+                                <span className="rounded-full bg-rose-100 px-3 py-1 text-[10px] font-bold text-rose-800 uppercase tracking-wider border border-rose-200 block w-fit mb-1">
+                                  ★ Serviço Popular
+                                </span>
+                              )}
+                              <span className="text-xs font-semibold text-stone-500 flex items-center gap-1">
+                                <Clock className="size-3.5 text-rose-500" /> Duração: {srv.duration_minutes} minutos
+                              </span>
+                            </div>
+                            <span className="font-serif text-2xl font-bold text-stone-900">{formatKz(srv.price)}</span>
+                          </div>
+                        )}
+
+                        <div className="flex items-start justify-between gap-3">
+                          <h3 className="font-serif text-2xl font-medium tracking-tight text-stone-900 group-hover:text-rose-600 transition-colors">
+                            {srv.name}
+                          </h3>
+                          {srv.category && (
+                            <span className="rounded-full bg-stone-100 border border-stone-200 px-3 py-1 text-[10px] font-bold text-stone-600 uppercase tracking-wider">
+                              {srv.category}
+                            </span>
+                          )}
+                        </div>
+
+                        <p className="mt-3 text-xs leading-relaxed text-stone-600 font-normal">
+                          {srv.description}
+                        </p>
+                      </div>
+
+                      <div className="mt-8 pt-5 border-t border-stone-100 flex items-center justify-between gap-4">
+                        <div className="flex items-center gap-2">
+                          <span className="relative flex h-2.5 w-2.5">
+                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                            <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
+                          </span>
+                          <span className="text-xs font-semibold text-emerald-700 tracking-wide">
+                            Agenda Aberta
+                          </span>
+                        </div>
+
+                        <button
+                          onClick={() => setSelectedService(srv)}
+                          style={{ backgroundColor: accentColor }}
+                          className="group/btn relative overflow-hidden rounded-full px-6 py-3.5 text-xs font-bold text-white transition-all duration-300 shadow-md hover:shadow-xl hover:scale-105 active:scale-95 flex items-center gap-2"
+                        >
+                          <Calendar className="size-4 transition-transform group-hover/btn:scale-110" />
+                          <span>Agendar Atendimento</span>
+                          <ArrowRight className="size-4 transition-transform group-hover/btn:translate-x-1" />
+                        </button>
+                      </div>
+                    </div>
+                  </motion.div>
+                ))}
+              </div>
+            )}
           </div>
         )}
 
@@ -509,7 +637,7 @@ export default function SalonPublicView({
 
       {/* FOOTER */}
       <footer className="border-t border-stone-200 bg-stone-900 text-stone-300 py-14 px-6 md:px-12">
-        <div className="mx-auto max-w-7xl grid gap-8 sm:grid-cols-2 md:grid-cols-4">
+        <div className="mx-auto max-w-7xl grid gap-8 sm:grid-cols-2 md:grid-cols-3">
           <div>
             <div className="flex items-center gap-3">
               <img src={salon.avatarImage} alt={salon.name} className="size-10 rounded-full object-cover border border-stone-700" />
@@ -529,17 +657,6 @@ export default function SalonPublicView({
             <h4 className="font-serif text-lg font-normal text-white mb-4">Horário de Funcionamento</h4>
             <p className="text-xs text-stone-400 mb-2">Segunda a Sábado: 08:30 — 19:30</p>
             <p className="text-xs text-stone-400 mb-2">Domingo: Encerrado</p>
-          </div>
-
-          <div>
-            <h4 className="font-serif text-lg font-normal text-white mb-4">Área Privada do Salão</h4>
-            <p className="text-xs text-stone-400 mb-4">Aceda ao painel de gestão para personalizar o seu salão.</p>
-            <Link
-              href={`/${salon.slug}/admin`}
-              className="inline-flex items-center gap-2 rounded-full border border-stone-700 bg-stone-800 px-5 py-2.5 text-xs font-semibold text-stone-100 transition hover:bg-stone-700"
-            >
-              <User className="size-3.5" /> Entrar no Painel do Salão
-            </Link>
           </div>
         </div>
       </footer>

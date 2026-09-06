@@ -23,8 +23,8 @@
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
-  --font-sans: 'Plus Jakarta Sans', 'Inter', system-ui, -apple-system, sans-serif;
-  --font-serif: 'Playfair Display', 'Georgia', serif;
+  --font-sans: var(--font-montserrat), 'Montserrat', system-ui, -apple-system, sans-serif;
+  --font-serif: var(--font-montserrat), 'Montserrat', sans-serif;
   --radius-lg: 1rem;
   --radius-xl: 1.5rem;
 }

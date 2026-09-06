@@ -1,16 +1,11 @@
-import { notFound } from 'next/navigation'
-import { initialSalons, initialServices } from '@/lib/salons-data'
+import { initialSalons, initialServices, SalonData } from '@/lib/salons-data'
 import SalonPublicView from '@/components/salon-public-view'
+import SalonSlugClient from '@/components/salon-slug-client'
 
 export default async function SalonSlugPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params
-  const salon = initialSalons.find((s) => s.slug === slug)
+  const initialSalon = initialSalons.find((s) => s.slug === slug)
+  const services = initialServices.filter((s) => s.salon_id === (initialSalon?.id || ''))
 
-  if (!salon) {
-    notFound()
-  }
-
-  const services = initialServices.filter((s) => s.salon_id === salon.id)
-
-  return <SalonPublicView salon={salon} services={services} />
+  return <SalonSlugClient slug={slug} initialSalon={initialSalon} initialServices={services} />
 }

@@ -17,12 +17,34 @@ export type MediaItemData = {
   category?: string
 }
 
+export type SubscriptionPlan = {
+  id: string
+  name: string // Ex: Facilita, Simplifica, Gold
+  price: number // Em Kwanzas
+  billingCycle: 'mensal' | 'semestral' | 'anual'
+  description: string
+  popular?: boolean
+}
+
+export type PaymentProof = {
+  id: string
+  salon_id: string
+  plan_id: string
+  plan_name: string
+  amount: number
+  proof_file_name: string
+  submitted_at: string
+  status: 'pendente' | 'aprovado' | 'rejeitado'
+}
+
 export type SalonData = {
   id: string
   name: string
   tagline: string
   slug: string
   city: string
+  province?: string // Província de Angola (ex: Luanda, Benguela, Huambo)
+  municipality?: string // Município (ex: Talatona, Belas, Cazenga, Lobito)
   address: string
   phone: string
   email: string
@@ -43,6 +65,12 @@ export type SalonData = {
   footerText: string
   instagram?: string
   facebook?: string
+  // Dados de Subscrição / Planos SaaS
+  plan_id?: string
+  plan_name?: string
+  plan_status?: 'sem_plano' | 'aguardando_comprovativo' | 'em_analise' | 'ativo' | 'expirado'
+  plan_expires_at?: string // Data de expiração ISO
+  payment_proof?: PaymentProof
 }
 
 export type ServiceData = {
@@ -53,6 +81,8 @@ export type ServiceData = {
   duration_minutes: number
   price: number
   image?: string
+  videoUrl?: string // Suporte para vídeos promocionais do serviço (até 10MB)
+  mediaType?: 'image' | 'video'
   active: boolean
   category: string
   popular?: boolean
@@ -70,6 +100,38 @@ export type BookingData = {
   status: 'Confirmado' | 'Pendente' | 'Concluído'
 }
 
+export const initialPlatformBankDetails = {
+  bankName: 'Banco BAI',
+  accountHolder: 'SGS - Gestão de Serviços Lda',
+  iban: 'AO06 0040 0000 1234 5678 9012 3',
+  whatsappSupport: '+244 923 456 789',
+}
+
+export const initialPlans: SubscriptionPlan[] = [
+  {
+    id: 'plan-facilita',
+    name: 'Facilita',
+    price: 15000,
+    billingCycle: 'mensal',
+    description: 'Ideal para pequenos salões e estúdios que querem agendamentos automáticos em Kwanzas.',
+  },
+  {
+    id: 'plan-simplifica',
+    name: 'Simplifica',
+    price: 35000,
+    billingCycle: 'semestral',
+    description: 'O plano mais equilibrado com galeria futurista de fotos e vídeos HD para o seu salão.',
+    popular: true,
+  },
+  {
+    id: 'plan-gold',
+    name: 'Gold VIP',
+    price: 60000,
+    billingCycle: 'anual',
+    description: 'Acesso total, gestão completa da equipa, suporte prioritário 24/7 e selo VIP de verificação.',
+  },
+]
+
 export const PresetImages = {
   covers: [
     { id: 'c1', label: 'Atelier Salão de Luxo', url: 'https://images.unsplash.com/photo-1560066984-138dadb4c035?auto=format&fit=crop&w=1600&q=85' },
@@ -82,49 +144,7 @@ export const PresetImages = {
   ]
 }
 
-export const initialSalons: SalonData[] = [
-  {
-    id: 'lumiere',
-    name: 'Atelier Lumière',
-    tagline: 'Haute Coiffure & Saúde Capilar Orgânica',
-    slug: 'atelier-lumiere',
-    city: 'Luanda',
-    address: 'Avenida 4 de Fevereiro · Talatona',
-    phone: '+244 923 456 789',
-    email: 'contacto@lumiere.ao',
-    description: 'Um santuário de beleza e visagismo no coração de Luanda. Especialistas em balayage de autor, saúde capilar orgânica e experiências sensoriais exclusivas.',
-    status: 'approved',
-    owner_id: 'owner-lumiere',
-    rating: 4.9,
-    reviewsCount: 148,
-    coverImage: 'https://images.unsplash.com/photo-1560066984-138dadb4c035?auto=format&fit=crop&w=1600&q=85',
-    avatarImage: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=300&q=80',
-    templateId: 'luxe-pink',
-    themeColor: '#e11d48',
-    textColor: '#ffffff',
-    fontFamily: 'serif',
-    footerText: '© 2026 Atelier Lumière. Todos os direitos reservados.',
-    instagram: '@atelier.lumiere.ao',
-    facebook: 'AtelierLumiereLuanda',
-    gallery: [
-      'https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?auto=format&fit=crop&w=800&q=80',
-      'https://images.unsplash.com/photo-1562322140-8baeececf3df?auto=format&fit=crop&w=800&q=80',
-      'https://images.unsplash.com/photo-1527799820374-dcf8d9d4a388?auto=format&fit=crop&w=800&q=80',
-    ],
-    mediaGallery: [
-      { id: 'm1', type: 'image', url: 'https://images.unsplash.com/photo-1560066984-138dadb4c035?auto=format&fit=crop&w=1000&q=85', title: 'Haute Coiffure Atelier', category: 'Cortes' },
-      { id: 'm2', type: 'video', url: 'https://assets.mixkit.co/videos/preview/mixkit-hairdresser-brushing-a-clients-hair-41246-large.mp4', title: 'Brushing Silk em Ação', category: 'Vídeo Demonstrativo' },
-      { id: 'm3', type: 'image', url: 'https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?auto=format&fit=crop&w=1000&q=85', title: 'Trança Nagô Elegante', category: 'Trança de Autor' },
-      { id: 'm4', type: 'video', url: 'https://assets.mixkit.co/videos/preview/mixkit-woman-getting-her-hair-washed-at-a-salon-41244-large.mp4', title: 'Lavagem Sensorial & Massagem', category: 'Vídeo Spa' },
-      { id: 'm5', type: 'image', url: 'https://images.unsplash.com/photo-1527799820374-dcf8d9d4a388?auto=format&fit=crop&w=1000&q=85', title: 'Manicura Russa de Precisão', category: 'Unhas' },
-    ],
-    stylists: [
-      { name: 'Camila Lumière', role: 'Master Stylist & Visagista', avatar: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=200&q=80' },
-      { name: 'Diogo Ribeiro', role: 'Colorista de Autor', avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=200&q=80' },
-      { name: 'Beatriz Costa', role: 'Técnica de Manicura Russa', avatar: 'https://images.unsplash.com/photo-1580489944761-15a19d654956?auto=format&fit=crop&w=200&q=80' },
-    ],
-  },
-]
+export const initialSalons: SalonData[] = []
 
 export const initialProducts: ProductData[] = [
   {

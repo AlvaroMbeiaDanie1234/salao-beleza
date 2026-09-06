@@ -2,7 +2,7 @@
 
 import React, { useState, useRef, useEffect } from 'react'
 import Link from 'next/link'
-import { SalonData, ServiceData, BookingData, ProductData, initialProducts, initialServices } from '@/lib/salons-data'
+import { SalonData, ServiceData, BookingData, ProductData, initialProducts, initialServices, SubscriptionPlan, initialPlans, initialPlatformBankDetails } from '@/lib/salons-data'
 import {
   Scissors,
   Plus,
@@ -44,7 +44,10 @@ import {
   Building,
   SlidersHorizontal,
   Instagram,
-  Facebook
+  Facebook,
+  CreditCard,
+  FileText,
+  AlertTriangle
 } from 'lucide-react'
 
 function formatKz(amount: number) {
@@ -68,75 +71,126 @@ export default function SalonAdminView({
   const [salon, setSalon] = useState<SalonData>(initialSalon)
   const [services, setServices] = useState<ServiceData[]>(initialServicesList)
   const [products, setProducts] = useState<ProductData[]>(initialProducts)
-  const [bookings] = useState<BookingData[]>(initialBookingsList)
+  const [bookings, setBookings] = useState<BookingData[]>(initialBookingsList)
 
-  // Separador Ativo da Sidebar (Sobre o Salão, Loja, Serviços, Marcações)
-  const [activeTab, setActiveTab] = useState<'about' | 'customization' | 'products' | 'services' | 'bookings'>('about')
-  const [sidebarOpen, setSidebarOpen] = useState(false)
-
-  // Modal para editar/adicionar informações "Sobre o Salão"
-  const [showEditInfoModal, setShowEditInfoModal] = useState(false)
-
-  // Termos de Pesquisa
-  const [productSearch, setProductSearch] = useState('')
-  const [serviceSearch, setServiceSearch] = useState('')
-  const [bookingSearch, setBookingSearch] = useState('')
-
-  // Modais de Registo
-  const [showProductModal, setShowProductModal] = useState(false)
-  const [showServiceModal, setShowServiceModal] = useState(false)
-
-  const coverFileRef = useRef<HTMLInputElement>(null)
-  const avatarFileRef = useRef<HTMLInputElement>(null)
-  const productFileRef = useRef<HTMLInputElement>(null)
-  const serviceFileRef = useRef<HTMLInputElement>(null)
-  const galleryFileRef = useRef<HTMLInputElement>(null)
-
-  // Formulário de Novo Serviço com Foto
-  const [newServiceName, setNewServiceName] = useState('')
-  const [newServiceDesc, setNewServiceDesc] = useState('')
-  const [newServicePrice, setNewServicePrice] = useState('25000')
-  const [newServiceDuration, setNewServiceDuration] = useState('60')
-  const [newServiceCategory, setNewServiceCategory] = useState('Cabelo')
-  const [newServiceImage, setNewServiceImage] = useState('https://images.unsplash.com/photo-1562322140-8baeececf3df?auto=format&fit=crop&w=600&q=80')
-
-  // Formulário de Novo Produto
-  const [newProductName, setNewProductName] = useState('')
-  const [newProductDesc, setNewProductDesc] = useState('')
-  const [newProductPrice, setNewProductPrice] = useState('18500')
-  const [newProductCategory, setNewProductCategory] = useState('Cabelo')
-  const [newProductImage, setNewProductImage] = useState('https://images.unsplash.com/photo-1608248597261-e4d0947c6b1e?auto=format&fit=crop&w=600&q=80')
-
-  const [savedFeedback, setSavedFeedback] = useState(false)
+  const supabase = createClient()
 
   useEffect(() => {
-    const savedCustom = localStorage.getItem(`salon_custom_${initialSalon.slug}`)
-    if (savedCustom) {
+    async function loadSalonDataFromSupabase() {
+      // 1. Carregar agendamentos do Supabase em tempo real
       try {
-        setSalon(JSON.parse(savedCustom))
+        const { data: bData, error: bErr } = await supabase
+          .from('bookings')
+          .select('*')
+          .eq('salon_id', initialSalon.id)
+          .order('created_at', { ascending: false })
+
+        if (!bErr && bData) {
+          const mappedBookings: BookingData[] = bData.map((b) => ({
+            id: b.id,
+            salon_id: b.salon_id,
+            service_name: b.service_name,
+            date: b.date,
+            time: b.time,
+            client_name: b.client_name,
+            client_phone: b.client_phone,
+            client_avatar: b.client_avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=150&q=80',
+            status: b.status || 'Pendente',
+          }))
+          setBookings(mappedBookings)
+        }
+      } catch (err) {
+        console.error('Erro ao ler marcações do Supabase:', err)
+      }
+
+      // 2. Carregar dados atualizados do salão do Supabase
+      try {
+        const { data: sData, error: sErr } = await supabase
+          .from('salons')
+          .select('*')
+          .eq('id', initialSalon.id)
+          .single()
+
+        if (!sErr && sData) {
+          setSalon((prev) => ({
+            ...prev,
+            avatarImage: sData.avatar_image || prev.avatarImage,
+            coverImage: sData.cover_image || prev.coverImage,
+            description: sData.description || prev.description,
+            address: sData.address || prev.address,
+            phone: sData.phone || prev.phone,
+            email: sData.email || prev.email,
+            city: sData.city || prev.city,
+            tagline: sData.tagline || prev.tagline,
+            name: sData.name || prev.name,
+            gallery: sData.gallery || prev.gallery,
+          }))
+        }
+      } catch (err) {
+        console.error('Erro ao ler perfil do Supabase:', err)
+      }
+    }
+
+    loadSalonDataFromSupabase()
+    const interval = setInterval(loadSalonDataFromSupabase, 2500)
+
+    return () => clearInterval(interval)
+  }, [initialSalon.id])
+
+  function handleProofFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (file) {
+      setProofFileName(file.name)
+      const reader = new FileReader()
+      reader.onloadend = () => {
+        setProofFilePreview(reader.result as string)
+      }
+      reader.readAsDataURL(file)
+    }
+  }
+
+  function handleSubmitPaymentProof(e: React.FormEvent) {
+    e.preventDefault()
+    if (!selectedPlanForSub) return
+
+    const proof = {
+      id: 'proof-' + Date.now(),
+      salon_id: salon.id,
+      plan_id: selectedPlanForSub.id,
+      plan_name: selectedPlanForSub.name,
+      amount: selectedPlanForSub.price,
+      proof_file_name: proofFileName || 'comprovativo_pagamento.pdf',
+      submitted_at: new Date().toLocaleDateString('pt-AO'),
+      status: 'pendente' as const,
+    }
+
+    const updatedSalon: SalonData = {
+      ...salon,
+      plan_id: selectedPlanForSub.id,
+      plan_name: selectedPlanForSub.name,
+      plan_status: 'em_analise',
+      payment_proof: proof,
+    }
+
+    setSalon(updatedSalon)
+    localStorage.setItem(`salon_custom_${salon.slug}`, JSON.stringify(updatedSalon))
+
+    // Atualizar no localStorage global de salões
+    const savedSalonsStr = localStorage.getItem('sgs_global_salons')
+    if (savedSalonsStr) {
+      try {
+        const allSalons: SalonData[] = JSON.parse(savedSalonsStr)
+        const updatedAll = allSalons.map((s) => (s.id === salon.id ? updatedSalon : s))
+        localStorage.setItem('sgs_global_salons', JSON.stringify(updatedAll))
+        window.dispatchEvent(new Event('storage'))
       } catch (e) {
         console.error(e)
       }
     }
 
-    const savedProducts = localStorage.getItem(`salon_products_${initialSalon.slug}`)
-    if (savedProducts) {
-      try {
-        setProducts(JSON.parse(savedProducts))
-      } catch (e) {
-        console.error(e)
-      }
-    }
-
-    const savedServices = localStorage.getItem(`salon_services_${initialSalon.slug}`)
-    if (savedServices) {
-      try {
-        setServices(JSON.parse(savedServices))
-      } catch (e) {
-        console.error(e)
-      }
-    }
-  }, [initialSalon.slug])
+    setProofSuccess(true)
+    setSelectedPlanForSub(null)
+  }
 
   function handleLogin(e: React.FormEvent) {
     e.preventDefault()
@@ -154,31 +208,53 @@ export default function SalonAdminView({
     }
   }
 
-  function handleImageUpload(e: React.ChangeEvent<HTMLInputElement>, type: 'cover' | 'avatar' | 'product' | 'service' | 'gallery') {
+  async function handleImageUpload(e: React.ChangeEvent<HTMLInputElement>, type: 'cover' | 'avatar' | 'product' | 'service' | 'gallery') {
     const file = e.target.files?.[0]
     if (file) {
       const reader = new FileReader()
-      reader.onload = (event) => {
+      reader.onload = async (event) => {
         const result = event.target?.result as string
         if (type === 'cover') {
           setSalon((prev) => ({ ...prev, coverImage: result }))
+          await supabase.from('salons').update({ cover_image: result }).eq('id', salon.id)
         } else if (type === 'avatar') {
           setSalon((prev) => ({ ...prev, avatarImage: result }))
+          await supabase.from('salons').update({ avatar_image: result }).eq('id', salon.id)
         } else if (type === 'product') {
           setNewProductImage(result)
         } else if (type === 'service') {
           setNewServiceImage(result)
         } else if (type === 'gallery') {
-          setSalon((prev) => ({ ...prev, gallery: [result, ...(prev.gallery || [])] }))
+          const updatedGallery = [result, ...(salon.gallery || [])]
+          setSalon((prev) => ({ ...prev, gallery: updatedGallery }))
+          await supabase.from('salons').update({ gallery: updatedGallery }).eq('id', salon.id)
         }
       }
       reader.readAsDataURL(file)
     }
   }
 
-  function handleSaveSalonCustomization(e: React.FormEvent) {
+  async function handleSaveSalonCustomization(e: React.FormEvent) {
     e.preventDefault()
-    localStorage.setItem(`salon_custom_${salon.slug}`, JSON.stringify(salon))
+    try {
+      await supabase.from('salons').update({
+        name: salon.name,
+        tagline: salon.tagline,
+        city: salon.city,
+        address: salon.address,
+        phone: salon.phone,
+        email: salon.email,
+        description: salon.description,
+        avatar_image: salon.avatarImage,
+        cover_image: salon.coverImage,
+        gallery: salon.gallery,
+        instagram: salon.instagram,
+        facebook: salon.facebook,
+      }).eq('id', salon.id)
+    } catch (err) {
+      console.error('Erro ao guardar personalização no Supabase:', err)
+    }
+
     setSavedFeedback(true)
     setShowEditInfoModal(false)
     setTimeout(() => setSavedFeedback(false), 3000)
@@ -189,6 +265,27 @@ export default function SalonAdminView({
       ...prev,
       gallery: prev.gallery.filter((_, i) => i !== idx),
     }))
+  }
+
+  function handleVideoUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (file) {
+      // Validar tamanho limite de 10MB (10 * 1024 * 1024 bytes)
+      const maxSizeBytes = 10 * 1024 * 1024
+      if (file.size > maxSizeBytes) {
+        setVideoUploadError(`O vídeo selecionado possui ${(file.size / (1024 * 1024)).toFixed(1)}MB. O limite máximo permitido é 10MB.`)
+        return
+      }
+
+      setVideoUploadError('')
+      const reader = new FileReader()
+      reader.onload = (event) => {
+        const result = event.target?.result as string
+        setNewServiceVideoUrl(result)
+        setNewServiceMediaType('video')
+      }
+      reader.readAsDataURL(file)
+    }
   }
 
   function addService(e: React.FormEvent) {
@@ -202,6 +299,8 @@ export default function SalonAdminView({
       duration_minutes: Number(newServiceDuration),
       price: Number(newServicePrice),
       image: newServiceImage,
+      videoUrl: newServiceVideoUrl,
+      mediaType: newServiceMediaType,
       active: true,
       category: newServiceCategory,
     }
@@ -210,6 +309,8 @@ export default function SalonAdminView({
     localStorage.setItem(`salon_services_${salon.slug}`, JSON.stringify(updated))
     setNewServiceName('')
     setNewServiceDesc('')
+    setNewServiceVideoUrl('')
+    setNewServiceMediaType('image')
     setShowServiceModal(false)
   }
 
@@ -348,6 +449,7 @@ export default function SalonAdminView({
           <nav className="mt-6 space-y-2">
             {[
               { id: 'about', label: 'Sobre o Salão', icon: Info },
+              { id: 'subscription', label: 'Plano & Subscrição', icon: CreditCard },
               { id: 'customization', label: 'Estilo & Template', icon: Palette },
               { id: 'products', label: 'Loja de Produtos', icon: ShoppingBag },
               { id: 'services', label: 'Menu de Serviços', icon: Scissors },
@@ -414,9 +516,24 @@ export default function SalonAdminView({
                 
                 <div className="relative z-10 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6">
                   <div className="flex items-center gap-6">
-                    <img src={salon.avatarImage} alt={salon.name} className="size-20 sm:size-24 rounded-3xl object-cover border-4 border-rose-100 shadow-md" />
+                    <input type="file" accept="image/*" ref={avatarFileRef} onChange={(e) => handleImageUpload(e, 'avatar')} className="hidden" />
+                    <div className="relative group cursor-pointer" onClick={() => avatarFileRef.current?.click()}>
+                      <img src={salon.avatarImage} alt={salon.name} className="size-20 sm:size-24 rounded-3xl object-cover border-4 border-rose-100 shadow-md group-hover:opacity-80 transition" />
+                      <div className="absolute inset-0 bg-black/40 rounded-3xl opacity-0 group-hover:opacity-100 flex items-center justify-center transition text-white text-[10px] font-bold text-center p-1">
+                        Alterar Foto
+                      </div>
+                    </div>
                     <div>
-                      <span className="text-xs font-bold uppercase tracking-widest text-rose-500">Perfil do Estabelecimento</span>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-bold uppercase tracking-widest text-rose-500">Perfil do Estabelecimento</span>
+                        <button
+                          type="button"
+                          onClick={() => avatarFileRef.current?.click()}
+                          className="text-[10px] font-bold text-rose-700 underline hover:text-rose-900"
+                        >
+                          Alterar Logótipo/Foto
+                        </button>
+                      </div>
                       <h1 className="font-serif text-3xl sm:text-4xl font-normal text-stone-900 mt-1">{salon.name}</h1>
                       <p className="text-xs text-rose-700 font-medium italic mt-0.5">{salon.tagline}</p>
                     </div>
@@ -484,6 +601,205 @@ export default function SalonAdminView({
                   ))}
                 </div>
               </div>
+            </div>
+          )}
+
+          {/* SEPARADOR SUBSCRIÇÃO & PLANOS DO SALÃO */}
+          {activeTab === 'subscription' && (
+            <div className="space-y-8">
+              {/* CARTÃO DE ESTADO DO PLANO DO SALÃO */}
+              <div className="rounded-[2.5rem] border border-rose-200 bg-white p-8 shadow-sm">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-rose-100 pb-6">
+                  <div>
+                    <span className="text-xs font-bold uppercase tracking-wider text-rose-500">Subscrição da Plataforma</span>
+                    <h2 className="font-serif text-3xl font-normal text-stone-900 mt-1">Estado da Conta do Salão</h2>
+                    <p className="text-xs text-stone-500 mt-1">Escolha o seu plano de subscrição e envie o comprovativo para manter a sua página pública e loja ativas.</p>
+                  </div>
+
+                  <div>
+                    {salon.plan_status === 'ativo' ? (
+                      <span className="rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300 px-4 py-2 text-xs font-bold flex items-center gap-1.5 shadow-sm">
+                        <CheckCircle2 className="size-4 text-emerald-600" /> Plano Ativo: {salon.plan_name}
+                      </span>
+                    ) : salon.plan_status === 'em_analise' ? (
+                      <span className="rounded-full bg-amber-100 text-amber-800 border border-amber-300 px-4 py-2 text-xs font-bold flex items-center gap-1.5 shadow-sm">
+                        <Clock className="size-4 text-amber-600 animate-pulse" /> Comprovativo em Análise pelo Admin
+                      </span>
+                    ) : (
+                      <span className="rounded-full bg-rose-100 text-rose-800 border border-rose-300 px-4 py-2 text-xs font-bold flex items-center gap-1.5 shadow-sm">
+                        <AlertTriangle className="size-4 text-rose-600" /> Subscrição Pendente
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                {/* NOTIFICAÇÃO E ALERTA DE EXPIRAÇÃO */}
+                {salon.plan_status === 'ativo' && salon.plan_expires_at && (
+                  <div className="mt-6 rounded-2xl bg-emerald-50 border border-emerald-200 p-5 flex items-start gap-3">
+                    <CheckCircle2 className="size-5 text-emerald-600 mt-0.5 shrink-0" />
+                    <div>
+                      <h4 className="font-serif font-bold text-emerald-950">A sua loja está 100% Online e Aprovada</h4>
+                      <p className="text-xs text-emerald-800 mt-0.5">
+                        O seu plano <strong className="text-stone-950">{salon.plan_name}</strong> está ativo até{' '}
+                        <strong className="text-stone-950">{new Date(salon.plan_expires_at).toLocaleDateString('pt-AO')}</strong>. Quando faltarem 5 dias para expirar, receberá um aviso automático.
+                      </p>
+                    </div>
+                  </div>
+                )}
+
+                {(!salon.plan_status || salon.plan_status === 'sem_plano' || salon.plan_status === 'em_analise') && (
+                  <div className="mt-6 rounded-2xl bg-amber-50 border border-amber-200 p-5 flex items-start gap-3">
+                    <AlertTriangle className="size-5 text-amber-600 mt-0.5 shrink-0" />
+                    <div>
+                      <h4 className="font-serif font-bold text-amber-950">Selecione o seu Plano de Pagamento</h4>
+                      <p className="text-xs text-amber-800 mt-0.5">
+                        Para ativar a página pública do seu salão e começar a receber agendamentos e vendas de produtos, selecione um dos planos abaixo e faça a transferência para o IBAN oficial da plataforma.
+                      </p>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* SELEÇÃO DE PLANOS DISPONÍVEIS */}
+              <div>
+                <h3 className="font-serif text-2xl font-normal text-stone-900 mb-4">Planos de Pagamento Disponíveis</h3>
+                <div className="grid gap-6 sm:grid-cols-3">
+                  {availablePlans.map((plan) => (
+                    <div
+                      key={plan.id}
+                      className={`rounded-[2.5rem] border p-7 shadow-sm transition-all flex flex-col justify-between ${
+                        selectedPlanForSub?.id === plan.id
+                          ? 'border-rose-600 bg-rose-50/70 shadow-lg scale-105'
+                          : 'border-rose-200 bg-white hover:border-rose-300'
+                      }`}
+                    >
+                      <div>
+                        {plan.popular && (
+                          <span className="rounded-full bg-rose-600 text-white px-3 py-1 text-[10px] font-bold uppercase tracking-wider">
+                            Recomendado
+                          </span>
+                        )}
+                        <h4 className="font-serif text-2xl font-bold text-stone-900 mt-2">{plan.name}</h4>
+                        <p className="text-xs text-stone-500 mt-1 leading-relaxed">{plan.description}</p>
+
+                        <div className="mt-6">
+                          <span className="font-serif text-3xl font-extrabold text-stone-900">{plan.price.toLocaleString('pt-AO')} Kz</span>
+                          <span className="text-xs text-stone-400 font-medium"> / {plan.billingCycle}</span>
+                        </div>
+                      </div>
+
+                      <button
+                        onClick={() => {
+                          setSelectedPlanForSub(plan)
+                          setProofSuccess(false)
+                        }}
+                        className={`mt-6 w-full rounded-full py-3 text-xs font-bold transition shadow-md ${
+                          selectedPlanForSub?.id === plan.id
+                            ? 'bg-rose-600 text-white'
+                            : 'bg-stone-900 text-white hover:bg-stone-800'
+                        }`}
+                      >
+                        {selectedPlanForSub?.id === plan.id ? '✓ Plano Selecionado' : 'Escolher este Plano'}
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* SEÇÃO DE COORDENADAS BANCÁRIAS E ENVIO DE COMPROVATIVO */}
+              {selectedPlanForSub && (
+                <div className="rounded-[2.5rem] border border-rose-300 bg-gradient-to-tr from-rose-50 to-white p-8 shadow-xl">
+                  <div className="flex items-center justify-between border-b border-rose-200 pb-4">
+                    <div>
+                      <span className="text-xs font-bold text-rose-600 uppercase">Pagamento via Transferência</span>
+                      <h3 className="font-serif text-2xl font-normal text-stone-900">
+                        Dados Bancários para o Plano: <strong className="text-rose-700">{selectedPlanForSub.name}</strong> ({selectedPlanForSub.price.toLocaleString('pt-AO')} Kz)
+                      </h3>
+                    </div>
+                  </div>
+
+                  <div className="mt-6 grid gap-6 sm:grid-cols-2">
+                    <div className="rounded-2xl border border-rose-200 bg-white p-6 shadow-sm">
+                      <span className="text-xs font-semibold text-stone-400 uppercase">Banco</span>
+                      <p className="font-serif text-lg font-bold text-stone-900 mt-1">{platformBank.bankName}</p>
+
+                      <span className="text-xs font-semibold text-stone-400 uppercase block mt-4">Titular da Conta</span>
+                      <p className="text-xs font-bold text-stone-800 mt-1">{platformBank.accountHolder}</p>
+
+                      <span className="text-xs font-semibold text-stone-400 uppercase block mt-4">Número IBAN Oficial</span>
+                      <div className="mt-1 rounded-xl bg-rose-50 border border-rose-200 p-3 flex items-center justify-between">
+                        <span className="font-mono text-xs font-bold text-rose-900">{platformBank.iban}</span>
+                      </div>
+                    </div>
+
+                    {/* FORMULÁRIO DE ENVIO DE COMPROVATIVO */}
+                    <div className="rounded-2xl border border-rose-200 bg-white p-6 shadow-sm">
+                      <h4 className="font-serif text-lg font-bold text-stone-900 mb-1">Enviar Comprovativo de Pagamento</h4>
+                      <p className="text-xs text-stone-500 mb-4">Carregue a captura de ecrã (imagem) ou o ficheiro PDF do comprovativo bancário.</p>
+
+                      {/* NOTA DE AVISO ANTI-FRAUDE E RISCO DE BLOQUEIO PERMANENTE */}
+                      <div className="mb-5 rounded-2xl bg-red-50 border border-red-200 p-4 flex items-start gap-3 text-red-900 shadow-sm">
+                        <AlertTriangle className="size-5 text-red-600 shrink-0 mt-0.5" />
+                        <div>
+                          <p className="text-xs font-bold uppercase tracking-wider text-red-700">Aviso Crítico Anti-Fraude</p>
+                          <p className="text-xs mt-1 leading-relaxed text-red-950 font-medium">
+                            <strong>ATENÇÃO:</strong> O envio de comprovativos falsos, adulterados ou de terceiros resultará no <strong>bloqueio imediato e permanente da conta do seu salão</strong>, sem possibilidade de recuperação ou reativação na rede SGS.
+                          </p>
+                        </div>
+                      </div>
+
+                      {!proofSuccess ? (
+                        <form onSubmit={handleSubmitPaymentProof} className="space-y-4">
+                          <div>
+                            <label className="text-xs font-semibold text-stone-500 uppercase block mb-1.5">Anexar Captura de Ecrã ou Ficheiro PDF</label>
+                            <input
+                              type="file"
+                              accept="image/*,application/pdf"
+                              ref={proofFileRef}
+                              onChange={handleProofFileSelect}
+                              className="hidden"
+                            />
+                            
+                            <div
+                              onClick={() => proofFileRef.current?.click()}
+                              className="cursor-pointer rounded-2xl border-2 border-dashed border-rose-200 bg-[#fffafd] p-4 text-center transition hover:border-rose-400 hover:bg-rose-50"
+                            >
+                              <Upload className="size-6 text-rose-500 mx-auto mb-1" />
+                              <span className="text-xs font-bold text-rose-950 block">Clique para Selecionar Ficheiro (PNG, JPG, PDF)</span>
+                              <span className="text-[11px] text-stone-500 block mt-0.5">
+                                {proofFileName ? `Ficheiro Selecionado: ${proofFileName}` : 'Nenhum ficheiro selecionado'}
+                              </span>
+                            </div>
+                          </div>
+
+                          <div>
+                            <label className="text-xs font-semibold text-stone-500 uppercase">Referência / Código da Transferência (Opcional)</label>
+                            <input
+                              value={proofFileName}
+                              onChange={(e) => setProofFileName(e.target.value)}
+                              placeholder="ex: comprovativo_bai_15000kz.pdf"
+                              className="mt-1 w-full rounded-xl border border-rose-200 bg-[#fffafd] p-3 text-xs outline-none focus:border-rose-400"
+                            />
+                          </div>
+
+                          <button
+                            type="submit"
+                            className="w-full rounded-full bg-gradient-to-r from-rose-600 to-pink-600 py-3.5 text-xs font-bold text-white shadow-md hover:opacity-95"
+                          >
+                            Confirmar & Submeter Comprovativo Verdadeiro
+                          </button>
+                        </form>
+                      ) : (
+                        <div className="py-4 text-center">
+                          <CheckCircle2 className="size-10 text-emerald-600 mx-auto mb-2" />
+                          <h4 className="font-serif text-lg font-bold text-stone-900">Comprovativo Submetido!</h4>
+                          <p className="text-xs text-stone-500 mt-1">O Administrador Master foi notificado e ativará a sua loja após verificação bancária.</p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
@@ -970,16 +1286,47 @@ export default function SalonAdminView({
                 />
               </div>
 
-              <div className="flex items-center gap-4">
-                <img src={newServiceImage} alt="Pré-visualização" className="size-14 rounded-2xl object-cover border-2 border-rose-200" />
-                <input type="file" accept="image/*" ref={serviceFileRef} onChange={(e) => handleImageUpload(e, 'service')} className="hidden" />
-                <button
-                  type="button"
-                  onClick={() => serviceFileRef.current?.click()}
-                  className="inline-flex items-center gap-2 rounded-full border border-rose-200 bg-[#fffafd] px-5 py-2.5 text-xs font-semibold text-stone-700 hover:bg-rose-50"
-                >
-                  <Upload className="size-3.5 text-rose-600" /> Carregar Foto do Computador
-                </button>
+              {/* UPLOAD DE FOTO E VÍDEO DO SERVIÇO (MÁX 10MB) */}
+              <div className="space-y-3">
+                <label className="text-xs font-semibold text-stone-500 uppercase block">Mídia do Serviço (Foto ou Vídeo até 10MB)</label>
+                
+                <div className="flex flex-wrap items-center gap-3">
+                  <input type="file" accept="image/*" ref={serviceFileRef} onChange={(e) => { handleImageUpload(e, 'service'); setNewServiceMediaType('image') }} className="hidden" />
+                  <input type="file" accept="video/mp4,video/webm" ref={serviceVideoFileRef} onChange={handleVideoUpload} className="hidden" />
+
+                  <button
+                    type="button"
+                    onClick={() => serviceFileRef.current?.click()}
+                    className={`inline-flex items-center gap-2 rounded-full border px-4 py-2.5 text-xs font-semibold transition ${
+                      newServiceMediaType === 'image' ? 'border-rose-500 bg-rose-50 text-rose-900 font-bold' : 'border-rose-200 bg-white text-stone-700'
+                    }`}
+                  >
+                    <Upload className="size-3.5 text-rose-600" /> Foto
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => serviceVideoFileRef.current?.click()}
+                    className={`inline-flex items-center gap-2 rounded-full border px-4 py-2.5 text-xs font-semibold transition ${
+                      newServiceMediaType === 'video' ? 'border-rose-500 bg-rose-50 text-rose-900 font-bold' : 'border-rose-200 bg-white text-stone-700'
+                    }`}
+                  >
+                    <Upload className="size-3.5 text-rose-600" /> Carregar Vídeo (Máx 10MB)
+                  </button>
+                </div>
+
+                {videoUploadError && (
+                  <p className="text-xs font-bold text-red-600 bg-red-50 p-2.5 rounded-xl border border-red-200">{videoUploadError}</p>
+                )}
+
+                {newServiceMediaType === 'video' && newServiceVideoUrl && (
+                  <div className="relative rounded-2xl overflow-hidden h-32 w-full border border-rose-200 bg-black mt-2">
+                    <video src={newServiceVideoUrl} controls className="h-full w-full object-cover" />
+                    <span className="absolute top-2 left-2 rounded-full bg-rose-600 text-white px-2.5 py-0.5 text-[10px] font-bold">
+                      Vídeo Carregado (10MB Max)
+                    </span>
+                  </div>
+                )}
               </div>
 
               <button

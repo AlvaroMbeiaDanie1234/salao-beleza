@@ -49,8 +49,10 @@ import {
 
 import SalonHeroGallery from '@/components/salon-hero-gallery'
 
+import { createClient } from '@/lib/supabase/client'
+
 export default function GestaoDashboard() {
-  const [salonsList, setSalonsList] = useState(initialSalons)
+  const [salonsList, setSalonsList] = useState<SalonData[]>([])
   const [registerModalOpen, setRegisterModalOpen] = useState(false)
   const [salonName, setSalonName] = useState('')
   const [ownerName, setOwnerName] = useState('')
@@ -63,19 +65,64 @@ export default function GestaoDashboard() {
   const [newsletterEmail, setNewsletterEmail] = useState('')
   const [newsletterSubscribed, setNewsletterSubscribed] = useState(false)
 
+  const supabase = createClient()
+
   useEffect(() => {
     setMounted(true)
-    const savedSalons = localStorage.getItem('sgs_global_salons')
-    if (savedSalons) {
+
+    async function loadApprovedSalons() {
       try {
-        setSalonsList(JSON.parse(savedSalons))
+        const { data, error } = await supabase.from('salons').select('*').order('created_at', { ascending: false })
+        if (!error && data) {
+          const mappedSalons: SalonData[] = data.map((s) => ({
+            id: s.id,
+            name: s.name,
+            tagline: s.tagline || 'Salão de Beleza',
+            slug: s.slug,
+            city: s.city || 'Luanda',
+            province: s.province,
+            municipality: s.municipality,
+            address: s.address || '',
+            phone: s.phone || '',
+            email: s.email || '',
+            description: s.description || '',
+            status: s.status || 'pending',
+            owner_id: s.owner_id || '',
+            rating: Number(s.rating || 5.0),
+            reviewsCount: Number(s.reviews_count || 1),
+            coverImage: s.cover_image || 'https://images.unsplash.com/photo-1560066984-138dadb4c035?auto=format&fit=crop&w=1600&q=85',
+            avatarImage: s.avatar_image || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=300&q=80',
+            templateId: s.template_id || 'luxe-pink',
+            themeColor: s.theme_color || '#e11d48',
+            textColor: s.text_color || '#ffffff',
+            fontFamily: s.font_family || 'serif',
+            footerText: s.footer_text || '',
+            gallery: s.gallery || [],
+            mediaGallery: s.media_gallery || [],
+            stylists: s.stylists || [],
+            plan_id: s.plan_id,
+            plan_name: s.plan_name,
+            plan_status: s.plan_status,
+          }))
+          setSalonsList(mappedSalons)
+        }
       } catch (err) {
-        console.error('Erro ao ler salões salvos:', err)
+        console.error('Erro ao ler salões do Supabase:', err)
       }
+    }
+
+    loadApprovedSalons()
+
+    window.addEventListener('storage', loadApprovedSalons)
+    const interval = setInterval(loadApprovedSalons, 2500)
+
+    return () => {
+      window.removeEventListener('storage', loadApprovedSalons)
+      clearInterval(interval)
     }
   }, [])
 
-  function handleRegisterSalon(e: React.FormEvent) {
+  async function handleRegisterSalon(e: React.FormEvent) {
     e.preventDefault()
     if (!salonName) return
 
@@ -105,11 +152,38 @@ export default function GestaoDashboard() {
       stylists: [],
     }
 
-    // Gravar no localStorage global
-    const currentSalons = salonsList
-    const updated = [newSalon, ...currentSalons]
-    setSalonsList(updated)
-    localStorage.setItem('sgs_global_salons', JSON.stringify(updated))
+    // 1. Inserir no Supabase Cloud
+    try {
+      await supabase.from('salons').insert([{
+        id: newSalon.id,
+        name: newSalon.name,
+        tagline: newSalon.tagline,
+        slug: newSalon.slug,
+        city: newSalon.city,
+        address: newSalon.address,
+        phone: newSalon.phone,
+        email: newSalon.email,
+        description: newSalon.description,
+        status: newSalon.status,
+        owner_id: newSalon.owner_id,
+        rating: newSalon.rating,
+        reviews_count: newSalon.reviewsCount,
+        cover_image: newSalon.coverImage,
+        avatar_image: newSalon.avatarImage,
+        template_id: newSalon.templateId,
+        theme_color: newSalon.themeColor,
+        text_color: newSalon.textColor,
+        font_family: newSalon.fontFamily,
+        footer_text: newSalon.footerText,
+        gallery: newSalon.gallery,
+        stylists: newSalon.stylists,
+      }])
+    } catch (err) {
+      console.error('Erro ao guardar no Supabase:', err)
+    }
+
+    // 2. Atualizar estado local
+    setSalonsList((prev) => [newSalon, ...prev])
 
     setRegisteredSuccess(true)
     if (typeof window !== 'undefined') {
@@ -154,7 +228,13 @@ export default function GestaoDashboard() {
 
           <div className="flex items-center gap-2 sm:gap-3">
             <button
-              onClick={() => setRegisterModalOpen(true)}
+              onClick={() => {
+                setRegisteredSuccess(false)
+                setSalonName('')
+                setOwnerName('')
+                setPhone('')
+                setRegisterModalOpen(true)
+              }}
               className="inline-flex items-center gap-2 rounded-full border border-rose-300 bg-rose-50 px-4 py-2.5 text-xs font-bold text-rose-800 transition hover:bg-rose-100 shadow-sm"
             >
               <PlusCircle className="size-4 text-rose-600" /> Cadastrar Meu Salão
@@ -257,8 +337,15 @@ export default function GestaoDashboard() {
 
             <div className="mt-8 flex flex-wrap items-center gap-4">
               <button
-                onClick={() => setRegisterModalOpen(true)}
-                className="inline-flex items-center gap-2.5 rounded-full bg-gradient-to-r from-rose-600 to-pink-600 px-8 py-4 text-sm font-semibold text-white transition-all hover:scale-105 hover:shadow-xl hover:shadow-rose-500/30"
+                type="button"
+                onClick={() => {
+                  setRegisteredSuccess(false)
+                  setSalonName('')
+                  setOwnerName('')
+                  setPhone('')
+                  setRegisterModalOpen(true)
+                }}
+                className="inline-flex items-center gap-2.5 rounded-full bg-gradient-to-r from-rose-600 to-pink-600 px-8 py-4 text-sm font-semibold text-white transition-all hover:scale-105 hover:shadow-xl hover:shadow-rose-500/30 cursor-pointer z-20 relative"
               >
                 Registar o Meu Salão Agora <ChevronRight className="size-4" />
               </button>
@@ -361,59 +448,71 @@ export default function GestaoDashboard() {
             </p>
           </div>
 
-          <div className="mt-14 grid gap-8 md:grid-cols-2">
-            {salonsList.map((s) => (
-              <div
-                key={s.id}
-                className="group relative overflow-hidden rounded-[2.5rem] border border-rose-100 bg-white transition-all duration-500 hover:border-rose-300 hover:shadow-2xl hover:shadow-rose-500/10 flex flex-col justify-between"
-              >
-                <div>
-                  <div className="relative h-72 w-full overflow-hidden">
-                    <img src={s.coverImage} alt={s.name} className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-105" />
-                    <div className="absolute inset-0 bg-gradient-to-t from-stone-950/80 via-stone-950/20 to-transparent" />
-                    
-                    <div className="absolute top-4 right-4 rounded-full bg-white/90 backdrop-blur-md px-3.5 py-1 text-xs font-bold text-rose-700 shadow-md">
-                      ★ {s.rating} ({s.reviewsCount} avaliações)
-                    </div>
+          <div className="mt-14">
+            {salonsList.filter((s) => s.status === 'approved').length > 0 ? (
+              <div className="grid gap-8 md:grid-cols-2">
+                {salonsList.filter((s) => s.status === 'approved').map((s) => (
+                  <div
+                    key={s.id}
+                    className="group relative overflow-hidden rounded-[2.5rem] border border-rose-100 bg-white transition-all duration-500 hover:border-rose-300 hover:shadow-2xl hover:shadow-rose-500/10 flex flex-col justify-between"
+                  >
+                    <div>
+                      <div className="relative h-72 w-full overflow-hidden">
+                        <img src={s.coverImage} alt={s.name} className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-105" />
+                        <div className="absolute inset-0 bg-gradient-to-t from-stone-950/80 via-stone-950/20 to-transparent" />
+                        
+                        <div className="absolute top-4 right-4 rounded-full bg-white/90 backdrop-blur-md px-3.5 py-1 text-xs font-bold text-rose-700 shadow-md">
+                          ★ {s.rating} ({s.reviewsCount} avaliações)
+                        </div>
 
-                    <div className="absolute bottom-5 left-6 right-6 flex items-center justify-between text-white">
-                      <span className="rounded-full bg-rose-950/80 backdrop-blur-md px-3.5 py-1 text-xs font-semibold text-rose-200 border border-rose-800/40">
-                        <MapPin className="mr-1 inline size-3.5" />{s.city}
-                      </span>
-                      <span className="text-xs font-mono text-stone-300">{s.address}</span>
-                    </div>
-                  </div>
+                        <div className="absolute bottom-5 left-6 right-6 flex items-center justify-between text-white">
+                          <span className="rounded-full bg-rose-950/80 backdrop-blur-md px-3.5 py-1 text-xs font-semibold text-rose-200 border border-rose-800/40">
+                            <MapPin className="mr-1 inline size-3.5" />{s.city}
+                          </span>
+                          <span className="text-xs font-mono text-stone-300">{s.address}</span>
+                        </div>
+                      </div>
 
-                  <div className="p-8">
-                    <div className="flex items-center gap-4">
-                      <img src={s.avatarImage} alt={s.name} className="size-14 rounded-2xl object-cover border-2 border-rose-200 shadow-md" />
-                      <div>
-                        <h3 className="font-serif text-2xl font-normal text-stone-900 group-hover:text-rose-700 transition-colors">{s.name}</h3>
-                        <p className="text-xs font-medium text-rose-600">{s.tagline}</p>
+                      <div className="p-8">
+                        <div className="flex items-center gap-4">
+                          <img src={s.avatarImage} alt={s.name} className="size-14 rounded-2xl object-cover border-2 border-rose-200 shadow-md" />
+                          <div>
+                            <h3 className="font-serif text-2xl font-normal text-stone-900 group-hover:text-rose-700 transition-colors">{s.name}</h3>
+                            <p className="text-xs font-medium text-rose-600">{s.tagline}</p>
+                          </div>
+                        </div>
+                        <p className="mt-4 text-xs leading-relaxed text-stone-600">{s.description}</p>
                       </div>
                     </div>
-                    <p className="mt-4 text-xs leading-relaxed text-stone-600">{s.description}</p>
-                  </div>
-                </div>
 
-                <div className="p-8 pt-0">
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between border-t border-rose-100 pt-5 gap-3">
-                    <span className="text-xs font-mono text-rose-700 bg-rose-100/70 px-3.5 py-1.5 rounded-full w-fit font-bold">
-                      Endpoint: /{s.slug}
-                    </span>
+                    <div className="p-8 pt-0">
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between border-t border-rose-100 pt-5 gap-3">
+                        <span className="text-xs font-mono text-rose-700 bg-rose-100/70 px-3.5 py-1.5 rounded-full w-fit font-bold">
+                          Endpoint: /{s.slug}
+                        </span>
 
-                    <div className="flex items-center gap-2">
-                      <Link
-                        href={`/${s.slug}`}
-                        className="inline-flex items-center gap-1.5 rounded-full bg-gradient-to-r from-rose-600 to-pink-600 px-5 py-2.5 text-xs font-semibold text-white transition hover:opacity-90 shadow-md shadow-rose-500/20"
-                      >
-                        Visitar Salão <ArrowUpRight className="size-3.5" />
-                      </Link>
+                        <div className="flex items-center gap-2">
+                          <Link
+                            href={`/${s.slug}`}
+                            className="inline-flex items-center gap-1.5 rounded-full bg-gradient-to-r from-rose-600 to-pink-600 px-5 py-2.5 text-xs font-semibold text-white transition hover:opacity-90 shadow-md shadow-rose-500/20"
+                          >
+                            Visitar Salão <ArrowUpRight className="size-3.5" />
+                          </Link>
+                        </div>
+                      </div>
                     </div>
                   </div>
-                </div>
+                ))}
               </div>
-            ))}
+            ) : (
+              <div className="rounded-3xl border border-dashed border-rose-200 p-12 text-center bg-white/60 backdrop-blur-sm">
+                <Building2 className="mx-auto size-12 text-rose-400" />
+                <h3 className="mt-4 font-serif text-2xl font-normal text-stone-900">Nenhum salão aprovado na base de dados no momento</h3>
+                <p className="mt-2 text-xs text-stone-500 max-w-md mx-auto">
+                  Quando um salão for cadastrado e aprovado pelo Admin Principal no painel <strong>/admin</strong>, ele aparecerá automaticamente listado aqui em tempo real.
+                </p>
+              </div>
+            )}
           </div>
         </div>
       </section>
@@ -477,8 +576,17 @@ export default function GestaoDashboard() {
             <div>
               <h4 className="font-serif text-base font-normal text-white mb-4">Salões em Angola</h4>
               <ul className="space-y-2.5 text-xs text-stone-400">
-                <li><Link href="/atelier-lumiere" className="hover:text-rose-400 transition">Atelier Lumière (Luanda)</Link></li>
-                <li><Link href="/casa-amora" className="hover:text-rose-400 transition">Casa Amora Spa (Benguela)</Link></li>
+                {salonsList.filter((s) => s.status === 'approved').length > 0 ? (
+                  salonsList.filter((s) => s.status === 'approved').map((s) => (
+                    <li key={s.id}>
+                      <Link href={`/${s.slug}`} className="hover:text-rose-400 transition">
+                        {s.name} ({s.city})
+                      </Link>
+                    </li>
+                  ))
+                ) : (
+                  <li className="text-stone-500 italic">Nenhum salão disponível no momento</li>
+                )}
               </ul>
             </div>
 
@@ -506,9 +614,20 @@ export default function GestaoDashboard() {
       </footer>
 
       {/* MODAL DE CADASTRO */}
-      {mounted && registerModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-stone-950/60 p-4 backdrop-blur-md">
-          <div className="w-full max-w-lg rounded-[2.5rem] bg-white p-6 sm:p-8 shadow-2xl">
+      <AnimatePresence>
+        {registerModalOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-stone-950/70 p-4 backdrop-blur-md overflow-y-auto"
+          >
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              className="w-full max-w-lg rounded-[2.5rem] bg-white p-6 sm:p-8 shadow-2xl my-auto"
+            >
             <div className="flex items-center justify-between border-b border-rose-100 pb-4">
               <div>
                 <span className="text-xs font-bold uppercase tracking-wider text-rose-500">Novo Salão no SGS</span>
@@ -589,9 +708,10 @@ export default function GestaoDashboard() {
                 </button>
               </div>
             )}
-          </div>
-        </div>
+          </motion.div>
+        </motion.div>
       )}
-    </main>
-  )
+    </AnimatePresence>
+  </main>
+)
 }
