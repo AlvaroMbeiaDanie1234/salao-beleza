@@ -100,7 +100,7 @@ export default function SalonSlugClient({
     fetchSalonFromSupabase()
   }, [slug])
 
-  if (!loaded) {
+  if (!loaded && !salon) {
     return (
       <div className="flex h-screen w-full items-center justify-center bg-[#fff5f7]">
         <div className="size-10 rounded-full border-4 border-rose-500 border-t-transparent animate-spin" />
