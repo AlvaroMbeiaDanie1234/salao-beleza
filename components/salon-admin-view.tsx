@@ -291,6 +291,32 @@ export default function SalonAdminView({
     }
   }
 
+  const heroVideoFileRef = useRef<HTMLInputElement>(null)
+  const [heroVideoUploadError, setHeroVideoUploadError] = useState('')
+
+  function handleHeroVideoUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (file) {
+      const maxSizeBytes = 25 * 1024 * 1024
+      if (file.size > maxSizeBytes) {
+        setHeroVideoUploadError(`O vídeo selecionado possui ${(file.size / (1024 * 1024)).toFixed(1)}MB. O limite máximo é 25MB.`)
+        return
+      }
+
+      setHeroVideoUploadError('')
+      const reader = new FileReader()
+      reader.onload = async (event) => {
+        const result = event.target?.result as string
+        setSalon((prev) => ({
+          ...prev,
+          heroVideoUrl: result,
+          heroMediaType: 'video',
+        }))
+      }
+      reader.readAsDataURL(file)
+    }
+  }
+
   async function handleSaveSalonCustomization(e: React.FormEvent) {
     e.preventDefault()
     try {
@@ -304,6 +330,8 @@ export default function SalonAdminView({
         description: salon.description,
         avatar_image: salon.avatarImage,
         cover_image: salon.coverImage,
+        hero_video_url: salon.heroVideoUrl,
+        hero_media_type: salon.heroMediaType,
         gallery: salon.gallery,
         instagram: salon.instagram,
         facebook: salon.facebook,
@@ -1200,38 +1228,54 @@ export default function SalonAdminView({
 
               {/* SECCÃO DEDICADA PARA FOTO/VÍDEO DE CAPA HERO E LOGÓTIPO */}
               <div className="rounded-2xl border border-rose-200 bg-[#fffafd] p-4 flex flex-col gap-3">
-                <span className="text-xs font-bold uppercase tracking-wider text-rose-600">Foto / Vídeo de Capa (Hero Banner)</span>
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold uppercase tracking-wider text-rose-600">Foto / Vídeo de Capa (Hero Banner)</span>
+                  {salon.heroMediaType === 'video' && salon.heroVideoUrl && (
+                    <button
+                      type="button"
+                      onClick={() => setSalon((prev) => ({ ...prev, heroVideoUrl: '', heroMediaType: 'image' }))}
+                      className="text-[11px] font-bold text-red-600 hover:underline"
+                    >
+                      Remover Vídeo (Voltar à Foto)
+                    </button>
+                  )}
+                </div>
                 
-                <div className="grid gap-3 sm:grid-cols-2">
-                  <div>
-                    <label className="text-[11px] font-semibold text-stone-500 uppercase">Foto de Capa (URL ou Upload)</label>
-                    <div className="flex gap-2 mt-1">
-                      <input
-                        value={salon.coverImage}
-                        onChange={(e) => setSalon({ ...salon, coverImage: e.target.value })}
-                        placeholder="https://exemplo.com/capa.jpg"
-                        className="flex-1 rounded-2xl border border-rose-200 bg-white p-3 text-xs outline-none"
-                      />
-                      <input type="file" accept="image/*" ref={coverFileRef} onChange={(e) => handleImageUpload(e, 'cover')} className="hidden" />
-                      <button
-                        type="button"
-                        onClick={() => coverFileRef.current?.click()}
-                        className="rounded-2xl bg-rose-100 px-3 text-xs font-bold text-rose-800 hover:bg-rose-200 whitespace-nowrap"
-                      >
-                        Upload
-                      </button>
-                    </div>
-                  </div>
+                <div className="flex flex-wrap items-center gap-3">
+                  <input type="file" accept="image/*" ref={coverFileRef} onChange={(e) => handleImageUpload(e, 'cover')} className="hidden" />
+                  <input type="file" accept="video/mp4,video/webm" ref={heroVideoFileRef} onChange={handleHeroVideoUpload} className="hidden" />
 
-                  <div>
-                    <label className="text-[11px] font-semibold text-stone-500 uppercase">Vídeo Promocional de Capa (URL)</label>
-                    <input
-                      value={salon.heroVideoUrl || ''}
-                      onChange={(e) => setSalon({ ...salon, heroVideoUrl: e.target.value, heroMediaType: e.target.value ? 'video' : 'image' })}
-                      placeholder="https://assets.mixkit.co/video.mp4 (Até 10MB)"
-                      className="mt-1 w-full rounded-2xl border border-rose-200 bg-white p-3 text-xs outline-none"
-                    />
-                  </div>
+                  <button
+                    type="button"
+                    onClick={() => coverFileRef.current?.click()}
+                    className="inline-flex items-center gap-2 rounded-2xl border border-rose-300 bg-white px-4 py-2.5 text-xs font-bold text-rose-900 shadow-sm hover:bg-rose-50 transition"
+                  >
+                    <Upload className="size-4 text-rose-600" /> Carregar Foto de Capa
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => heroVideoFileRef.current?.click()}
+                    className="inline-flex items-center gap-2 rounded-2xl border border-rose-300 bg-white px-4 py-2.5 text-xs font-bold text-rose-900 shadow-sm hover:bg-rose-50 transition"
+                  >
+                    <Upload className="size-4 text-rose-600" /> Carregar Vídeo de Capa (até 25MB)
+                  </button>
+                </div>
+
+                {heroVideoUploadError && (
+                  <p className="text-xs font-bold text-red-600 bg-red-50 p-2.5 rounded-xl border border-red-200">{heroVideoUploadError}</p>
+                )}
+
+                {/* Pré-visualização da Capa Hero (Imagem ou Vídeo) */}
+                <div className="relative rounded-2xl overflow-hidden h-36 w-full border border-rose-200 bg-stone-900 mt-1">
+                  {salon.heroMediaType === 'video' && salon.heroVideoUrl ? (
+                    <video src={salon.heroVideoUrl} controls className="h-full w-full object-cover" />
+                  ) : (
+                    <img src={salon.coverImage} alt="Capa" className="h-full w-full object-cover" />
+                  )}
+                  <span className="absolute top-2 left-2 rounded-full bg-rose-900/80 text-white px-3 py-1 text-[10px] font-bold backdrop-blur-sm">
+                    {salon.heroMediaType === 'video' ? 'Vídeo Selecionado' : 'Foto Atual'}
+                  </span>
                 </div>
               </div>
 
