@@ -69,6 +69,8 @@ export default function SalonPublicView({
 
   const [clientName, setClientName] = useState('')
   const [clientPhone, setClientPhone] = useState('')
+  const [bookingDate, setBookingDate] = useState(new Date().toISOString().split('T')[0])
+  const [bookingTime, setBookingTime] = useState('10:30')
   const [activeTab, setActiveTab] = useState<'servicos' | 'produtos' | 'estudio3d' | 'equipa' | 'galeria'>('servicos')
 
   const [currentImgIndex, setCurrentImgIndex] = useState(0)
@@ -781,15 +783,28 @@ export default function SalonPublicView({
                   <div className="grid grid-cols-2 gap-3">
                     <div>
                       <label className="text-xs font-semibold text-stone-500 uppercase">Data</label>
-                      <input required type="date" defaultValue="2026-09-02" className="mt-1 w-full rounded-2xl border border-stone-200 bg-[#fbf9f6] p-3.5 text-sm outline-none" />
+                      <input
+                        required
+                        type="date"
+                        value={bookingDate}
+                        onChange={(e) => setBookingDate(e.target.value)}
+                        className="mt-1 w-full rounded-2xl border border-stone-200 bg-[#fbf9f6] p-3.5 text-sm outline-none"
+                      />
                     </div>
                     <div>
                       <label className="text-xs font-semibold text-stone-500 uppercase">Horário</label>
-                      <select className="mt-1 w-full rounded-2xl border border-stone-200 bg-[#fbf9f6] p-3.5 text-sm outline-none">
+                      <select
+                        value={bookingTime}
+                        onChange={(e) => setBookingTime(e.target.value)}
+                        className="mt-1 w-full rounded-2xl border border-stone-200 bg-[#fbf9f6] p-3.5 text-sm outline-none"
+                      >
+                        <option>09:00</option>
                         <option>10:30</option>
+                        <option>11:30</option>
                         <option>14:00</option>
-                        <option>16:30</option>
-                        <option>18:00</option>
+                        <option>15:30</option>
+                        <option>17:00</option>
+                        <option>18:30</option>
                       </select>
                     </div>
                   </div>
