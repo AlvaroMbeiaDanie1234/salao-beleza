@@ -58,6 +58,8 @@ export default function SalonSlugClient({
             gallery: data.gallery || [],
             mediaGallery: data.media_gallery || [],
             stylists: data.stylists || [],
+            heroVideoUrl: data.hero_video_url,
+            heroMediaType: data.hero_media_type,
             plan_id: data.plan_id,
             plan_name: data.plan_name,
             plan_status: data.plan_status,

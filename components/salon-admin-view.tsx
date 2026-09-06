@@ -232,6 +232,8 @@ export default function SalonAdminView({
               tagline: sData.tagline || prev.tagline,
               name: sData.name || prev.name,
               gallery: sData.gallery || prev.gallery,
+              heroVideoUrl: sData.hero_video_url || prev.heroVideoUrl,
+              heroMediaType: sData.hero_media_type || prev.heroMediaType,
             }))
           }
         } catch (err) {
