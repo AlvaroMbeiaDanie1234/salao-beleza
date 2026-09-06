@@ -49,6 +49,7 @@ import {
   FileText,
   AlertTriangle
 } from 'lucide-react'
+import { createClient } from '@/lib/supabase/client'
 
 function formatKz(amount: number) {
   return amount.toLocaleString('pt-AO') + ' Kz'
