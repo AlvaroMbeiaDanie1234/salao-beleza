@@ -148,32 +148,8 @@ export const PresetImages = {
 
 export const initialSalons: SalonData[] = []
 
-export const initialProducts: ProductData[] = [
-  {
-    id: 'p1',
-    salon_id: 'lumiere',
-    name: 'Óleo Capilar Elixir Silk Lumière 100ml',
-    description: 'Sérum nutritivo com óleo de argan e macadâmia para brilho tridimensional e proteção térmica.',
-    price: 18500,
-    image: 'https://images.unsplash.com/photo-1608248597261-e4d0947c6b1e?auto=format&fit=crop&w=600&q=80',
-    category: 'Cabelo',
-    inStock: true,
-  },
-]
+export const initialProducts: ProductData[] = []
 
-export const initialServices: ServiceData[] = [
-  {
-    id: 's1',
-    salon_id: 'lumiere',
-    name: 'Corte de Autor & Brushing Silk',
-    description: 'Diagnóstico individual de visagismo, lavagem sensorial com óleos botânicos e styling personalizado.',
-    duration_minutes: 60,
-    price: 25000,
-    image: 'https://images.unsplash.com/photo-1562322140-8baeececf3df?auto=format&fit=crop&w=600&q=80',
-    active: true,
-    category: 'Cabelo',
-    popular: true,
-  },
-]
+export const initialServices: ServiceData[] = []
 
 export const initialBookings: BookingData[] = []
