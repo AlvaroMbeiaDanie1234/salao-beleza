@@ -78,14 +78,14 @@ export default function SalonPublicView({
   useEffect(() => {
     async function loadPublicDataFromSupabase() {
       try {
-        // Carregar dados atualizados do salão em tempo real
-        const { data: salData, error: salErr } = await supabase
-          .from('salons')
-          .select('*')
-          .eq('id', initialSalon.id)
-          .single()
+        const [salRes, prodRes, servRes] = await Promise.all([
+          supabase.from('salons').select('*').eq('id', initialSalon.id).single(),
+          supabase.from('products').select('*').eq('salon_id', initialSalon.id),
+          supabase.from('services').select('*').eq('salon_id', initialSalon.id),
+        ])
 
-        if (!salErr && salData) {
+        if (!salRes.error && salRes.data) {
+          const salData = salRes.data
           setSalon((prev) => ({
             ...prev,
             name: salData.name || prev.name,
@@ -103,14 +103,8 @@ export default function SalonPublicView({
           }))
         }
 
-        // Carregar produtos do salão do Supabase em tempo real
-        const { data: pData, error: pErr } = await supabase
-          .from('products')
-          .select('*')
-          .eq('salon_id', initialSalon.id)
-
-        if (!pErr && pData) {
-          const mappedProducts: ProductData[] = pData.map((p) => ({
+        if (!prodRes.error && prodRes.data) {
+          setProducts(prodRes.data.map((p) => ({
             id: p.id,
             salon_id: p.salon_id,
             name: p.name,
@@ -119,18 +113,11 @@ export default function SalonPublicView({
             image: p.image,
             category: p.category || 'Geral',
             inStock: p.in_stock ?? true,
-          }))
-          setProducts(mappedProducts)
+          })))
         }
 
-        // Carregar serviços do salão do Supabase em tempo real
-        const { data: sData, error: sErr } = await supabase
-          .from('services')
-          .select('*')
-          .eq('salon_id', initialSalon.id)
-
-        if (!sErr && sData) {
-          const mappedServices: ServiceData[] = sData.map((s) => ({
+        if (!servRes.error && servRes.data) {
+          setServices(servRes.data.map((s) => ({
             id: s.id,
             salon_id: s.salon_id,
             name: s.name,
@@ -143,16 +130,15 @@ export default function SalonPublicView({
             active: s.active ?? true,
             category: s.category || 'Geral',
             popular: s.popular ?? false,
-          }))
-          setServices(mappedServices)
+          })))
         }
       } catch (err) {
-        console.error('Erro ao ler produtos/serviços do Supabase:', err)
+        console.error('Erro ao sincronizar dados do Supabase:', err)
       }
     }
 
     loadPublicDataFromSupabase()
-    const dataSyncInterval = setInterval(loadPublicDataFromSupabase, 2000)
+    const dataSyncInterval = setInterval(loadPublicDataFromSupabase, 8000)
 
     const interval = setInterval(() => {
       setCurrentImgIndex((prev) => (prev + 1) % carouselImages.length)

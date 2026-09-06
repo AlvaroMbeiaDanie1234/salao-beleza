@@ -132,16 +132,16 @@ export default function SalonAdminView({
 
   useEffect(() => {
     async function loadSalonDataFromSupabase() {
-      // 1. Carregar agendamentos do Supabase em tempo real
       try {
-        const { data: bData, error: bErr } = await supabase
-          .from('bookings')
-          .select('*')
-          .eq('salon_id', initialSalon.id)
-          .order('created_at', { ascending: false })
+        const [bRes, pRes, sRes, salRes] = await Promise.all([
+          supabase.from('bookings').select('*').eq('salon_id', initialSalon.id).order('created_at', { ascending: false }),
+          supabase.from('products').select('*').eq('salon_id', initialSalon.id),
+          supabase.from('services').select('*').eq('salon_id', initialSalon.id),
+          !showEditInfoModal ? supabase.from('salons').select('*').eq('id', initialSalon.id).single() : Promise.resolve({ data: null, error: null }),
+        ])
 
-        if (!bErr && bData) {
-          const mappedBookings: BookingData[] = bData.map((b) => ({
+        if (!bRes.error && bRes.data) {
+          setBookings(bRes.data.map((b) => ({
             id: b.id,
             salon_id: b.salon_id,
             service_name: b.service_name,
@@ -151,22 +151,11 @@ export default function SalonAdminView({
             client_phone: b.client_phone,
             client_avatar: b.client_avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=150&q=80',
             status: b.status || 'Pendente',
-          }))
-          setBookings(mappedBookings)
+          })))
         }
-      } catch (err) {
-        console.error('Erro ao ler marcações do Supabase:', err)
-      }
 
-      // 2. Carregar produtos do Supabase
-      try {
-        const { data: pData, error: pErr } = await supabase
-          .from('products')
-          .select('*')
-          .eq('salon_id', initialSalon.id)
-
-        if (!pErr && pData) {
-          const mappedProducts: ProductData[] = pData.map((p) => ({
+        if (!pRes.error && pRes.data) {
+          setProducts(pRes.data.map((p) => ({
             id: p.id,
             salon_id: p.salon_id,
             name: p.name,
@@ -175,22 +164,11 @@ export default function SalonAdminView({
             image: p.image,
             category: p.category || 'Geral',
             inStock: p.in_stock ?? true,
-          }))
-          setProducts(mappedProducts)
+          })))
         }
-      } catch (err) {
-        console.error('Erro ao ler produtos do Supabase:', err)
-      }
 
-      // 3. Carregar serviços do Supabase
-      try {
-        const { data: sData, error: sErr } = await supabase
-          .from('services')
-          .select('*')
-          .eq('salon_id', initialSalon.id)
-
-        if (!sErr && sData) {
-          const mappedServices: ServiceData[] = sData.map((s) => ({
+        if (!sRes.error && sRes.data) {
+          setServices(sRes.data.map((s) => ({
             id: s.id,
             salon_id: s.salon_id,
             name: s.name,
@@ -203,47 +181,34 @@ export default function SalonAdminView({
             active: s.active ?? true,
             category: s.category || 'Geral',
             popular: s.popular ?? false,
+          })))
+        }
+
+        if (salRes.data) {
+          const sData = salRes.data
+          setSalon((prev) => ({
+            ...prev,
+            avatarImage: sData.avatar_image || prev.avatarImage,
+            coverImage: sData.cover_image || prev.coverImage,
+            description: sData.description || prev.description,
+            address: sData.address || prev.address,
+            phone: sData.phone || prev.phone,
+            email: sData.email || prev.email,
+            city: sData.city || prev.city,
+            tagline: sData.tagline || prev.tagline,
+            name: sData.name || prev.name,
+            gallery: sData.gallery || prev.gallery,
+            heroVideoUrl: sData.hero_video_url || prev.heroVideoUrl,
+            heroMediaType: sData.hero_media_type || prev.heroMediaType,
           }))
-          setServices(mappedServices)
         }
       } catch (err) {
-        console.error('Erro ao ler serviços do Supabase:', err)
-      }
-
-      // 4. Carregar dados atualizados do salão do Supabase apenas se o utilizador NÃO estiver a editar no modal
-      if (!showEditInfoModal) {
-        try {
-          const { data: sData, error: sErr } = await supabase
-            .from('salons')
-            .select('*')
-            .eq('id', initialSalon.id)
-            .single()
-
-          if (!sErr && sData) {
-            setSalon((prev) => ({
-              ...prev,
-              avatarImage: sData.avatar_image || prev.avatarImage,
-              coverImage: sData.cover_image || prev.coverImage,
-              description: sData.description || prev.description,
-              address: sData.address || prev.address,
-              phone: sData.phone || prev.phone,
-              email: sData.email || prev.email,
-              city: sData.city || prev.city,
-              tagline: sData.tagline || prev.tagline,
-              name: sData.name || prev.name,
-              gallery: sData.gallery || prev.gallery,
-              heroVideoUrl: sData.hero_video_url || prev.heroVideoUrl,
-              heroMediaType: sData.hero_media_type || prev.heroMediaType,
-            }))
-          }
-        } catch (err) {
-          console.error('Erro ao ler perfil do Supabase:', err)
-        }
+        console.error('Erro ao sincronizar dados admin no Supabase:', err)
       }
     }
 
     loadSalonDataFromSupabase()
-    const interval = setInterval(loadSalonDataFromSupabase, 2500)
+    const interval = setInterval(loadSalonDataFromSupabase, 4000)
 
     return () => clearInterval(interval)
   }, [initialSalon.id, showEditInfoModal])
