@@ -88,7 +88,25 @@ export default function SalonAdminSlugClient({
   }
 
   if (!salon) {
-    return notFound()
+    return (
+      <div className="flex min-h-screen flex-col items-center justify-center bg-[#fff5f7] p-6 text-center text-stone-900">
+        <div className="max-w-md rounded-3xl border border-rose-200 bg-white p-8 shadow-xl">
+          <div className="mx-auto flex size-16 items-center justify-center rounded-2xl bg-rose-100 text-rose-600 font-bold text-2xl">
+            ?
+          </div>
+          <h2 className="mt-4 font-serif text-2xl font-bold">Painel do Salão Não Encontrado</h2>
+          <p className="mt-2 text-xs text-stone-500">
+            Não foi encontrado nenhum salão com a conta <span className="font-mono font-bold text-rose-700">/{slug}/admin</span>.
+          </p>
+          <a
+            href="/"
+            className="mt-6 inline-block rounded-full bg-gradient-to-r from-rose-600 to-pink-600 px-6 py-3 text-xs font-bold text-white shadow-md hover:opacity-90"
+          >
+            Voltar à Página Principal
+          </a>
+        </div>
+      </div>
+    )
   }
 
   return <SalonAdminView salon={salon} services={services} bookings={bookings} />
