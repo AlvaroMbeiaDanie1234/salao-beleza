@@ -5,6 +5,8 @@ import { notFound } from 'next/navigation'
 import { SalonData, ServiceData, BookingData, initialServices, initialBookings } from '@/lib/salons-data'
 import SalonAdminView from '@/components/salon-admin-view'
 
+import { createClient } from '@/lib/supabase/client'
+
 export default function SalonAdminSlugClient({
   slug,
   initialSalon,
@@ -21,32 +23,59 @@ export default function SalonAdminSlugClient({
   const [bookings, setBookings] = useState<BookingData[]>(defaultBookings)
   const [loaded, setLoaded] = useState(false)
 
-  useEffect(() => {
-    let foundSalon = initialSalon
+  const supabase = createClient()
 
-    const savedSalonsStr = localStorage.getItem('sgs_global_salons')
-    if (savedSalonsStr) {
+  useEffect(() => {
+    async function fetchSalonFromSupabase() {
       try {
-        const parsedSalons: SalonData[] = JSON.parse(savedSalonsStr)
-        const match = parsedSalons.find((s) => s.slug === slug)
-        if (match) {
-          foundSalon = match
+        const { data, error } = await supabase
+          .from('salons')
+          .select('*')
+          .eq('slug', slug)
+          .single()
+
+        if (!error && data) {
+          const mappedSalon: SalonData = {
+            id: data.id,
+            name: data.name,
+            tagline: data.tagline || 'Salão de Beleza',
+            slug: data.slug,
+            city: data.city || 'Luanda',
+            province: data.province,
+            municipality: data.municipality,
+            address: data.address || '',
+            phone: data.phone || '',
+            email: data.email || '',
+            description: data.description || '',
+            status: data.status || 'approved',
+            owner_id: data.owner_id || '',
+            rating: Number(data.rating || 5.0),
+            reviewsCount: Number(data.reviews_count || 1),
+            coverImage: data.cover_image || 'https://images.unsplash.com/photo-1560066984-138dadb4c035?auto=format&fit=crop&w=1600&q=85',
+            avatarImage: data.avatar_image || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=300&q=80',
+            templateId: data.template_id || 'luxe-pink',
+            themeColor: data.theme_color || '#e11d48',
+            textColor: data.text_color || '#ffffff',
+            fontFamily: data.font_family || 'serif',
+            footerText: data.footer_text || '',
+            gallery: data.gallery || [],
+            mediaGallery: data.media_gallery || [],
+            stylists: data.stylists || [],
+            plan_id: data.plan_id,
+            plan_name: data.plan_name,
+            plan_status: data.plan_status,
+          }
+          setSalon(mappedSalon)
         }
       } catch (err) {
-        console.error('Erro ao ler sgs_global_salons no client:', err)
+        console.error('Erro ao ler salão admin do Supabase:', err)
+      } finally {
+        setLoaded(true)
       }
     }
 
-    if (foundSalon) {
-      setSalon(foundSalon)
-      const matchingServices = initialServices.filter((s) => s.salon_id === foundSalon?.id)
-      setServices(matchingServices.length > 0 ? matchingServices : defaultServices)
-      const matchingBookings = initialBookings.filter((b) => b.salon_id === foundSalon?.id)
-      setBookings(matchingBookings.length > 0 ? matchingBookings : defaultBookings)
-    }
-
-    setLoaded(true)
-  }, [slug, initialSalon, defaultServices, defaultBookings])
+    fetchSalonFromSupabase()
+  }, [slug])
 
   if (!loaded) {
     return (
