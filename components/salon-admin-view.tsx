@@ -158,31 +158,33 @@ export default function SalonAdminView({
         console.error('Erro ao ler marcações do Supabase:', err)
       }
 
-      // 2. Carregar dados atualizados do salão do Supabase
-      try {
-        const { data: sData, error: sErr } = await supabase
-          .from('salons')
-          .select('*')
-          .eq('id', initialSalon.id)
-          .single()
+      // 2. Carregar dados atualizados do salão do Supabase apenas se o utilizador NÃO estiver a editar no modal
+      if (!showEditInfoModal) {
+        try {
+          const { data: sData, error: sErr } = await supabase
+            .from('salons')
+            .select('*')
+            .eq('id', initialSalon.id)
+            .single()
 
-        if (!sErr && sData) {
-          setSalon((prev) => ({
-            ...prev,
-            avatarImage: sData.avatar_image || prev.avatarImage,
-            coverImage: sData.cover_image || prev.coverImage,
-            description: sData.description || prev.description,
-            address: sData.address || prev.address,
-            phone: sData.phone || prev.phone,
-            email: sData.email || prev.email,
-            city: sData.city || prev.city,
-            tagline: sData.tagline || prev.tagline,
-            name: sData.name || prev.name,
-            gallery: sData.gallery || prev.gallery,
-          }))
+          if (!sErr && sData) {
+            setSalon((prev) => ({
+              ...prev,
+              avatarImage: sData.avatar_image || prev.avatarImage,
+              coverImage: sData.cover_image || prev.coverImage,
+              description: sData.description || prev.description,
+              address: sData.address || prev.address,
+              phone: sData.phone || prev.phone,
+              email: sData.email || prev.email,
+              city: sData.city || prev.city,
+              tagline: sData.tagline || prev.tagline,
+              name: sData.name || prev.name,
+              gallery: sData.gallery || prev.gallery,
+            }))
+          }
+        } catch (err) {
+          console.error('Erro ao ler perfil do Supabase:', err)
         }
-      } catch (err) {
-        console.error('Erro ao ler perfil do Supabase:', err)
       }
     }
 
@@ -190,7 +192,7 @@ export default function SalonAdminView({
     const interval = setInterval(loadSalonDataFromSupabase, 2500)
 
     return () => clearInterval(interval)
-  }, [initialSalon.id])
+  }, [initialSalon.id, showEditInfoModal])
 
   function handleProofFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
