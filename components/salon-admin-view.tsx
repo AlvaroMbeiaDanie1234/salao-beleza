@@ -321,8 +321,8 @@ export default function SalonAdminView({
       reader.onload = async (event) => {
         const result = event.target?.result as string
         if (type === 'cover') {
-          setSalon((prev) => ({ ...prev, coverImage: result }))
-          await supabase.from('salons').update({ cover_image: result }).eq('id', salon.id)
+          setSalon((prev) => ({ ...prev, coverImage: result, heroMediaType: 'image', heroVideoUrl: '' }))
+          await supabase.from('salons').update({ cover_image: result, hero_media_type: 'image', hero_video_url: '' }).eq('id', salon.id)
         } else if (type === 'avatar') {
           setSalon((prev) => ({ ...prev, avatarImage: result }))
           await supabase.from('salons').update({ avatar_image: result }).eq('id', salon.id)
@@ -361,6 +361,14 @@ export default function SalonAdminView({
           heroVideoUrl: result,
           heroMediaType: 'video',
         }))
+        try {
+          await supabase.from('salons').update({
+            hero_video_url: result,
+            hero_media_type: 'video',
+          }).eq('id', salon.id)
+        } catch (err) {
+          console.error('Erro ao atualizar vídeo no Supabase:', err)
+        }
       }
       reader.readAsDataURL(file)
     }
